@@ -1,0 +1,108 @@
+'use client';
+import { useState } from 'react';
+import { BUCKET, supabase } from '@/lib/supabase';
+import { CATEGORIES, COURSES, getCourse } from '@/lib/courses';
+import { EXT_MIME, kindFromExt } from '@/lib/media';
+import type { Category, Track } from '@/lib/types';
+
+const MAX = 30 * 1024 * 1024;
+const field = 'w-full rounded-lg border border-line bg-panel px-3 py-2.5 outline-none focus:border-brand';
+
+export default function UploadPage() {
+  const [slug, setSlug] = useState(COURSES[0].slug);
+  const [track, setTrack] = useState<Track>('theory');
+  const [category, setCategory] = useState<Category>('lectures');
+  const [title, setTitle] = useState('');
+  const [tags, setTags] = useState('');
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const course = getCourse(slug)!;
+  const isVideo = category === 'videos';
+  const effTrack: Track = course.split ? (track === 'main' ? 'theory' : track) : 'main';
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    if (title.trim().length < 2) return setMsg({ ok: false, text: 'اكتب عنواناً واضحاً للملف.' });
+    if (isVideo && !/^https?:\/\//i.test(url)) return setMsg({ ok: false, text: 'ضع رابطاً صحيحاً يبدأ بـ https://' });
+    if (!isVideo && !file) return setMsg({ ok: false, text: 'اختر ملفاً.' });
+    if (file && file.size > MAX) return setMsg({ ok: false, text: 'حجم الملف أكبر من 30 ميغابايت.' });
+
+    setBusy(true);
+    try {
+      let file_path: string | null = null;
+      let file_kind: string = 'video';
+      if (!isVideo && file) {
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const r = await fetch('/api/upload/sign', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, size: file.size }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || 'sign');
+        const up = await supabase.storage.from(BUCKET).uploadToSignedUrl(j.path, j.token, file, { contentType: EXT_MIME[ext] });
+        if (up.error) throw up.error;
+        file_path = j.path;
+        file_kind = kindFromExt(ext);
+      }
+      const { error } = await supabase.from('items').insert({
+        subject_slug: slug, track: effTrack, category, title: title.trim(),
+        tags: tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean).slice(0, 8),
+        file_path, file_kind, external_url: isVideo ? url.trim() : null,
+        uploader_name: name.trim() || null,
+      });
+      if (error) throw error;
+      setMsg({ ok: true, text: 'وصل الملف وهو بانتظار مراجعة المشرف. سيظهر بعد الموافقة.' });
+      setTitle(''); setTags(''); setUrl(''); setFile(null);
+    } catch (err: any) {
+      setMsg({ ok: false, text: `فشل الرفع: ${err?.message || 'خطأ غير معروف'}` });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <form onSubmit={submit} className="mx-auto max-w-xl space-y-4">
+      <h1 className="text-2xl font-bold">رفع ملف</h1>
+      <p className="text-sm text-muted">كل ملف يمرّ على مراجعة المشرف قبل ظهوره. الصيغ: PDF، صور، Word، PowerPoint (حتى 30 ميغابايت).</p>
+
+      <label className="block"><span className="mb-1 block text-sm">المادة</span>
+        <select className={field} value={slug} onChange={(e) => setSlug(e.target.value)}>
+          {COURSES.map((c) => <option key={c.slug} value={c.slug}>{c.ar}</option>)}
+        </select></label>
+
+      {course.split && (
+        <label className="block"><span className="mb-1 block text-sm">المسار</span>
+          <select className={field} value={effTrack} onChange={(e) => setTrack(e.target.value as Track)}>
+            <option value="theory">نظري</option><option value="lab">مختبر</option>
+          </select></label>
+      )}
+
+      <label className="block"><span className="mb-1 block text-sm">القسم</span>
+        <select className={field} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
+          {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+        </select></label>
+
+      <label className="block"><span className="mb-1 block text-sm">العنوان</span>
+        <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="مثال: فاينل 2024 – الدور الأول" /></label>
+
+      {isVideo ? (
+        <label className="block"><span className="mb-1 block text-sm">رابط الفيديو (YouTube أو غيره)</span>
+          <input className={field} dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://youtu.be/..." /></label>
+      ) : (
+        <label className="block"><span className="mb-1 block text-sm">الملف</span>
+          <input type="file" className={field} accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
+      )}
+
+      <label className="block"><span className="mb-1 block text-sm">وسوم (مفصولة بفاصلة)</span>
+        <input className={field} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Ch3, op-amp, 2024" /></label>
+      <label className="block"><span className="mb-1 block text-sm">اسمك (اختياري)</span>
+        <input className={field} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></label>
+
+      <button disabled={busy} className="w-full rounded-lg bg-brand py-3 font-bold text-onbrand disabled:opacity-60">
+        {busy ? 'جارٍ الرفع…' : 'إرسال للمراجعة'}
+      </button>
+      {msg && <p role="status" className={`rounded-lg border p-3 text-sm ${msg.ok ? 'border-brand' : 'border-now'}`}>{msg.text}</p>}
+    </form>
+  );
+}
