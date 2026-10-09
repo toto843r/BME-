@@ -20,22 +20,27 @@ export default function PreviewModal({ item, onClose }: { item: Item | null; onC
   const embed = item.external_url ? youtubeEmbed(item.external_url) : null;
   const ext = item.file_path?.split('.').pop() || '';
 
-  let body: React.ReactNode;
+  // media first (image / pdf / video), the text comes right after it, all in ONE scrolling column
+  let media: React.ReactNode = null;
   if (embed) {
-    body = <iframe src={embed} title={item.title} allowFullScreen className="h-full w-full"
-      allow="accelerometer; encrypted-media; picture-in-picture" />;
+    media = <div className="aspect-video w-full bg-black"><iframe src={embed} title={item.title} allowFullScreen className="h-full w-full"
+      allow="accelerometer; encrypted-media; picture-in-picture" /></div>;
   } else if (item.file_kind === 'image' && item.file_path) {
-    body = <div className="flex h-full items-center justify-center overflow-auto bg-black/5 p-2"><img src={url} alt={item.title} className="max-h-full max-w-full object-contain" /></div>;
+    media = <img src={url} alt={item.title} className="block h-auto w-full" />;
   } else if (item.file_kind === 'pdf' && item.file_path) {
-    body = <iframe src={url} title={item.title} className="h-full w-full" />;
+    media = <iframe src={url} title={item.title} className="block h-[75dvh] w-full" />;
   } else if (item.file_kind === 'doc' && item.file_path) {
-    body = <iframe src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`} title={item.title} className="h-full w-full" />;
-  } else {
-    body = <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-      <p className="text-muted">هذا رابط خارجي لا يمكن تضمينه.</p>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-brand px-4 py-2 font-semibold text-onbrand">فتح الرابط</a>
-    </div>;
+    media = <iframe src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`} title={item.title} className="block h-[75dvh] w-full" />;
+  } else if (item.external_url) {
+    media = (
+      <div className="flex flex-col items-center gap-3 p-6 text-center">
+        <p className="text-muted">هذا رابط خارجي لا يمكن تضمينه.</p>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-brand px-4 py-2 font-semibold text-onbrand">فتح الرابط</a>
+      </div>
+    );
   }
+
+  const lines = (item.description || '').split('\n');
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 md:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={item.title}>
@@ -47,13 +52,22 @@ export default function PreviewModal({ item, onClose }: { item: Item | null; onC
               <Download size={15} /> تحميل
             </a>
           )}
-          <a href={url} target="_blank" rel="noopener noreferrer" aria-label="فتح في تبويب جديد" className="rounded-lg p-2 hover:bg-line/60"><ExternalLink size={17} /></a>
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" aria-label="فتح في تبويب جديد" className="rounded-lg p-2 hover:bg-line/60"><ExternalLink size={17} /></a>
+          )}
           <button onClick={onClose} aria-label="إغلاق" className="rounded-lg p-2 hover:bg-line/60"><X size={18} /></button>
         </div>
-        {item.description && (
-          <p className="max-h-28 overflow-auto whitespace-pre-line border-b border-line p-3 text-sm">{item.description}</p>
-        )}
-        <div className="min-h-0 flex-1">{body}</div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {media}
+          {item.description && (
+            <div className={`space-y-1.5 p-4 text-base leading-relaxed ${media ? 'border-t border-line' : ''}`}>
+              {lines.map((line, i) =>
+                line.trim() ? <p key={i} dir="auto" className="text-start">{line}</p> : <div key={i} className="h-2" />,
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

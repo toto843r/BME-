@@ -8,7 +8,7 @@ import type { Item, Track } from '@/lib/types';
 interface Report { id: string; reason: string | null; items: any }
 interface Pub {
   id: string; title: string; subject_slug: string; track: string; category: string;
-  file_path: string | null; external_url: string | null; exam_pick?: boolean; description?: string | null;
+  file_path: string | null; external_url: string | null; exam_pick?: boolean; description?: string | null; file_kind?: string;
 }
 
 const sel = 'w-full rounded-lg border border-line bg-bg px-2 py-2 text-sm';
@@ -52,14 +52,21 @@ export default function AdminPage() {
     setMoving(i.id); setMSlug(i.subject_slug); setMCat(i.category); setMDesc(i.description || '');
     setMTrack(getCourse(i.subject_slug)?.split ? (i.track === 'lab' ? 'lab' : 'theory') : 'main');
   }
-  const validCat = (t: string, cat: string, isFile: boolean) => {
-    const list = categoriesFor(t as Track).filter((c) => (c.key === 'videos') === !isFile);
+  // text posts -> quizzes/midterms/finals only; links -> videos only; files -> everything else
+  const catOk = (i: Pub, key: string) =>
+    i.file_kind === 'text' ? ['quizzes', 'midterms', 'finals'].includes(key) : (key === 'videos') === !i.file_path;
+  const validCat = (t: string, cat: string, i: Pub) => {
+    const list = categoriesFor(t as Track).filter((c) => catOk(i, c.key));
     return list.some((c) => c.key === cat) ? cat : (list[0]?.key ?? cat);
   };
-  function changeCourse(slug: string, isFile: boolean) {
+  function changeCourse(slug: string, i: Pub) {
     const t = getCourse(slug)?.split ? 'theory' : 'main';
-    setMSlug(slug); setMTrack(t); setMCat((c) => validCat(t, c, isFile));
+    setMSlug(slug); setMTrack(t); setMCat((c) => validCat(t, c, i));
   }
+  const titleLink = (i: { title: string; file_path: string | null; external_url: string | null }, cls: string) =>
+    i.file_path || i.external_url
+      ? <a href={urlOf(i)} target="_blank" rel="noopener noreferrer" className={`${cls} text-brand underline`}>{i.title}</a>
+      : <span className={cls}>{i.title} <span className="text-xs text-muted">(نص)</span></span>;
 
   const q = filter.trim().toLowerCase();
   const matches = (i: Pub) => !q || (i.title + ' ' + (getCourse(i.subject_slug)?.ar || '')).toLowerCase().includes(q);
@@ -69,7 +76,7 @@ export default function AdminPage() {
   const row = (i: Pub) => (
     <div key={i.id} className="rounded-lg border border-line bg-bg p-2.5">
       <div className="flex items-center gap-2">
-        <a href={urlOf(i)} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-medium text-brand underline">{i.title}</a>
+        {titleLink(i, 'min-w-0 flex-1 truncate font-medium')}
         <button onClick={() => act('toggle_pick', i.id, { value: !i.exam_pick })} aria-pressed={!!i.exam_pick}
           aria-label="ضمن مود ليلة الامتحان" title="ضمن مود ليلة الامتحان"
           className={`rounded-lg border p-2 ${i.exam_pick ? 'border-now bg-now text-[#10242B]' : 'border-line text-muted'}`}>
@@ -84,16 +91,16 @@ export default function AdminPage() {
       {i.description && moving !== i.id && <p className="mt-1.5 whitespace-pre-line text-xs text-muted">{i.description}</p>}
       {moving === i.id && (
         <div className="mt-2.5 space-y-2 border-t border-line pt-2.5">
-          <select className={sel} value={mSlug} onChange={(e) => changeCourse(e.target.value, !!i.file_path)}>
+          <select className={sel} value={mSlug} onChange={(e) => changeCourse(e.target.value, i)}>
             {COURSES.map((c) => <option key={c.slug} value={c.slug}>{c.ar}</option>)}
           </select>
-          <select className={sel} value={mTrack} onChange={(e) => { setMTrack(e.target.value); setMCat((c) => validCat(e.target.value, c, !!i.file_path)); }}>
+          <select className={sel} value={mTrack} onChange={(e) => { setMTrack(e.target.value); setMCat((c) => validCat(e.target.value, c, i)); }}>
             {trackOptions(mSlug).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <select className={sel} value={mCat} onChange={(e) => setMCat(e.target.value)}>
-            {categoriesFor(mTrack as Track).filter((c) => (c.key === 'videos') === !i.file_path).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+            {categoriesFor(mTrack as Track).filter((c) => catOk(i, c.key)).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
           </select>
-          <textarea className={sel} rows={3} maxLength={500} value={mDesc} onChange={(e) => setMDesc(e.target.value)} placeholder="وصف الملف (اختياري)" />
+          <textarea className={sel} rows={6} maxLength={5000} value={mDesc} onChange={(e) => setMDesc(e.target.value)} placeholder="وصف الملف (اختياري)" />
           <div className="flex gap-2">
             <button onClick={() => { act('move_item', i.id, { slug: mSlug, track: mTrack, category: mCat, description: mDesc }); setMoving(null); }}
               className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-onbrand">حفظ</button>
@@ -127,7 +134,7 @@ export default function AdminPage() {
         <div className="space-y-3">
           {pending.map((i) => (
             <div key={i.id} className="rounded-xl border border-line bg-panel p-3">
-              <a href={urlOf(i)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline">{i.title}</a>
+              {titleLink(i, 'font-semibold')}
               <p className="mt-0.5 text-xs text-muted">
                 {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{CATEGORY_AR[i.category]}
                 {i.uploader_name && ` – من ${i.uploader_name}`}
@@ -204,7 +211,7 @@ export default function AdminPage() {
             const it = Array.isArray(r.items) ? r.items[0] : r.items;
             return (
               <div key={r.id} className="rounded-xl border border-line bg-panel p-3">
-                {it && <a href={urlOf(it)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline">{it.title}</a>}
+                {it && titleLink(it, 'font-semibold')}
                 <p className="mt-0.5 text-sm">{r.reason || 'بدون وصف'}</p>
                 <div className="mt-2 flex gap-2">
                   <button onClick={() => act('resolve_report', r.id)} className="rounded-lg border border-line px-3 py-1.5 text-sm">تم الحل</button>

@@ -1,5 +1,5 @@
 'use client';
-import { Eye, Flag, PlayCircle, Share2, Star } from 'lucide-react';
+import { Eye, FileText, Flag, PlayCircle, Share2, Star } from 'lucide-react';
 import type { Item } from '@/lib/types';
 import { BADGES } from '@/lib/courses';
 import { supabase } from '@/lib/supabase';
@@ -29,10 +29,10 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
   return (
     <div className="flex items-start gap-3 rounded-xl border border-line bg-panel p-3">
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 text-start">
-        <span className="mt-0.5 text-brand">{item.file_kind === 'video' ? <PlayCircle size={22} /> : <Eye size={22} />}</span>
+        <span className="mt-0.5 text-brand">{item.file_kind === 'video' ? <PlayCircle size={22} /> : item.file_kind === 'text' ? <FileText size={22} /> : <Eye size={22} />}</span>
         <span className="min-w-0 flex-1">
           <span className="block font-medium leading-snug">{item.title}</span>
-          {item.description && <span className="mt-1 block whitespace-pre-line text-sm text-muted">{item.description}</span>}
+          {item.description && <span dir="auto" className="mt-1 line-clamp-3 block whitespace-pre-line text-start text-sm text-muted">{item.description}</span>}
           {subtitle && <span className="mt-0.5 block text-xs text-muted">{subtitle}</span>}
           {(badges.length > 0 || item.tags.length > 0) && (
             <span className="mt-1.5 flex flex-wrap gap-1.5">

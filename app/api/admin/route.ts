@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         .select('id, reason, created_at, items(id, title, subject_slug, track, file_path, external_url)')
         .eq('resolved', false).order('created_at');
       const approved = await db.from('items')
-        .select('id, title, subject_slug, track, category, file_path, external_url, created_at, exam_pick, description')
+        .select('id, title, subject_slug, track, category, file_path, external_url, created_at, exam_pick, description, file_kind')
         .eq('status', 'approved').order('created_at', { ascending: false }).limit(500);
       return NextResponse.json({ pending: pending.data || [], reports: reports.data || [], approved: approved.data || [] });
     }
@@ -74,13 +74,16 @@ export async function POST(req: Request) {
       if ((track === 'lab' && body.category === 'videos') || (track !== 'lab' && body.category === 'reports')) {
         return NextResponse.json({ error: 'هذا القسم غير متاح لهذا المسار (التقارير للمختبر فقط، والشروحات للنظري فقط).' }, { status: 400 });
       }
-      const { data: it } = await db.from('items').select('file_path').eq('id', id).single();
-      const isLink = !it?.file_path;
-      if (isLink !== (body.category === 'videos')) {
+      const { data: it } = await db.from('items').select('file_path, file_kind').eq('id', id).single();
+      if (it?.file_kind === 'text') {
+        if (!['quizzes', 'midterms', 'finals'].includes(body.category)) {
+          return NextResponse.json({ error: 'النصوص تُنقل للكوزات أو المدات أو الفاينلات فقط.' }, { status: 400 });
+        }
+      } else if (!it?.file_path !== (body.category === 'videos')) {
         return NextResponse.json({ error: 'الروابط تُنقل لقسم الشروحات فقط، والملفات لباقي الأقسام.' }, { status: 400 });
       }
       const upd: Record<string, unknown> = { subject_slug: c.slug, track, category: body.category };
-      if (typeof body.description === 'string') upd.description = body.description.trim().slice(0, 500) || null;
+      if (typeof body.description === 'string') upd.description = body.description.trim().slice(0, 5000) || null;
       const { error } = await db.from('items').update(upd).eq('id', id);
       return NextResponse.json({ ok: !error, error: error?.message });
     }

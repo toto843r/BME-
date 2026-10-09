@@ -43,13 +43,13 @@ export default function UploadPage() {
     setMsg(null);
     if (title.trim().length < 2) return setMsg({ ok: false, text: 'اكتب عنواناً واضحاً للملف.' });
     if (isVideo && !/^https?:\/\//i.test(url)) return setMsg({ ok: false, text: 'ضع رابطاً صحيحاً يبدأ بـ https://' });
-    if (!isVideo && !file) return setMsg({ ok: false, text: 'اختر ملفاً.' });
+    if (!isVideo && !file && !(hasDesc && desc.trim())) return setMsg({ ok: false, text: hasDesc ? 'اختر ملفاً أو اكتب نص الأسئلة.' : 'اختر ملفاً.' });
     if (file && file.size > MAX) return setMsg({ ok: false, text: 'حجم الملف أكبر من 30 ميغابايت.' });
 
     setBusy(true);
     try {
       let file_path: string | null = null;
-      let file_kind: string = 'video';
+      let file_kind: string = isVideo ? 'video' : 'text';
       if (!isVideo && file) {
         const ext = (file.name.split('.').pop() || '').toLowerCase();
         const r = await fetch('/api/upload/sign', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -66,7 +66,7 @@ export default function UploadPage() {
         tags: tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean).slice(0, 8),
         file_path, file_kind, external_url: isVideo ? url.trim() : null,
         uploader_name: name.trim() || null,
-        description: hasDesc ? desc.trim().slice(0, 500) || null : null,
+        description: hasDesc ? desc.trim().slice(0, 5000) || null : null,
       });
       if (error) throw error;
       setMsg({ ok: true, text: 'وصل الملف وهو بانتظار مراجعة المشرف. سيظهر بعد الموافقة.' });
@@ -106,17 +106,17 @@ export default function UploadPage() {
         <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="مثال: فاينل 2024 – الدور الأول" /></label>
 
       {hasDesc && (
-        <label className="block"><span className="mb-1 block text-sm">وصف الملف (اختياري)</span>
-          <textarea className={field} rows={3} maxLength={500} value={desc} onChange={(e) => setDesc(e.target.value)}
-            placeholder="مثال: الأسئلة من 1 إلى 15، الحل بخط اليد في آخر صفحة" />
-          <span className="mt-1 block text-xs text-muted">{desc.length}/500</span></label>
+        <label className="block"><span className="mb-1 block text-sm">النص أو الوصف</span>
+          <textarea className={field} rows={7} maxLength={5000} value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="اكتب الأسئلة هنا إذا ما عندك ملف، أو أضف وصفاً يظهر تحت الصورة/الملف" />
+          <span className="mt-1 block text-xs text-muted">{desc.length}/5000 – تقدر تكتب النص فقط بدون رفع ملف</span></label>
       )}
 
       {isVideo ? (
         <label className="block"><span className="mb-1 block text-sm">رابط الشرح (YouTube أو Google Drive أو تلكرام أو أي رابط)</span>
           <input className={field} dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://youtu.be/..." /></label>
       ) : (
-        <label className="block"><span className="mb-1 block text-sm">الملف</span>
+        <label className="block"><span className="mb-1 block text-sm">{hasDesc ? 'الملف أو الصورة (اختياري إذا كتبت النص)' : 'الملف'}</span>
           <input type="file" className={field} accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
       )}
 
