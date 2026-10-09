@@ -17,3 +17,8 @@ body { @apply bg-bg text-ink antialiased; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* header upload button: "Add explanation link" replaces "Upload file" while the Videos tab is open */
+html .upload-link-video { display: none; }
+html[data-tab='videos'] .upload-link-video { display: flex; }
+html[data-tab='videos'] .upload-link-default { display: none; }

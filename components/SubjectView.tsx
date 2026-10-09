@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Star, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Category, Item, Track } from '@/lib/types';
-import { CATEGORIES, CRUNCH } from '@/lib/courses';
+import { CATEGORIES } from '@/lib/courses';
 import { useBookmarks } from '@/lib/useBookmarks';
 import ItemCard from './ItemCard';
 import PreviewModal from './PreviewModal';
@@ -20,6 +20,14 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
   const { ids, toggle } = useBookmarks();
 
   useEffect(() => { setCrunch(localStorage.getItem('bme-crunch') === '1'); }, []);
+  // lets the header switch its upload button while the Videos tab is open
+  useEffect(() => {
+    const d = document.documentElement.dataset;
+    d.tab = crunch ? 'crunch' : tab;
+    d.slug = slug;
+    d.track = track;
+    return () => { delete d.tab; delete d.slug; delete d.track; };
+  }, [tab, crunch, slug, track]);
   useEffect(() => {
     supabase.from('items').select('*').eq('subject_slug', slug).eq('track', track).eq('status', 'approved')
       .order('created_at', { ascending: false })
@@ -64,23 +72,32 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
 
       {items && !crunch && (
         <div className="space-y-2">
-          {by(tab).length === 0 && <Empty />}
+          {tab === 'videos' && (
+            <p className="mb-1 rounded-lg bg-brand/10 p-3 text-sm">هذا القسم مخصص لروابط الشروحات (فيديوهات وقنوات ومجلدات). الروابط تُفتح من هنا مباشرة.</p>
+          )}
+          {by(tab).length === 0 && (tab === 'videos'
+            ? <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">لا تتوفر روابط شروحات حالياً.</p>
+            : <Empty />)}
           {by(tab).map(card)}
         </div>
       )}
       {items && crunch && (
         <div className="space-y-6">
-          {CRUNCH.map((k) => {
-            const list = by(k);
-            const label = CATEGORIES.find((c) => c.key === k)!.ar;
+          <p className="rounded-lg bg-now/20 p-3 text-sm">ملفات اختارها المشرف للمراجعة السريعة قبل الامتحان.</p>
+          {CATEGORIES.map((cat) => {
+            const list = by(cat.key).filter((i) => i.exam_pick);
             return list.length ? (
-              <div key={k}>
-                <h3 className="mb-2 font-bold">{label}</h3>
+              <div key={cat.key}>
+                <h3 className="mb-2 font-bold">{cat.ar}</h3>
                 <div className="space-y-2">{list.map(card)}</div>
               </div>
             ) : null;
           })}
-          {CRUNCH.every((k) => by(k).length === 0) && <Empty />}
+          {!visible.some((i) => i.exam_pick) && (
+            <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+              ما اختار المشرف ملفات لهذه المادة بعد. ارجع لاحقاً أو شوف التبويبات العادية.
+            </p>
+          )}
         </div>
       )}
       <PreviewModal item={open} onClose={() => setOpen(null)} />

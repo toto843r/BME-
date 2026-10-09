@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BUCKET, supabase } from '@/lib/supabase';
 import { CATEGORIES, COURSES, getCourse } from '@/lib/courses';
 import { EXT_MIME, kindFromExt } from '@/lib/media';
@@ -19,6 +19,14 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const sl = q.get('slug'), c = q.get('category'), t = q.get('track');
+    if (sl && getCourse(sl)) setSlug(sl);
+    if (c && CATEGORIES.some((x) => x.key === c)) setCategory(c as Category);
+    if (t === 'theory' || t === 'lab') setTrack(t);
+  }, []);
 
   const course = getCourse(slug)!;
   const isVideo = category === 'videos';
@@ -83,11 +91,15 @@ export default function UploadPage() {
           {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
         </select></label>
 
+      <p className="-mt-2 text-xs text-muted">
+        {isVideo ? 'قسم الشروحات روابط فقط، ولا يقبل رفع ملفات.' : 'هذا القسم ملفات فقط. الروابط تُضاف في قسم الشروحات.'}
+      </p>
+
       <label className="block"><span className="mb-1 block text-sm">العنوان</span>
         <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="مثال: فاينل 2024 – الدور الأول" /></label>
 
       {isVideo ? (
-        <label className="block"><span className="mb-1 block text-sm">رابط الفيديو (YouTube أو غيره)</span>
+        <label className="block"><span className="mb-1 block text-sm">رابط الشرح (YouTube أو Google Drive أو تلكرام أو أي رابط)</span>
           <input className={field} dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://youtu.be/..." /></label>
       ) : (
         <label className="block"><span className="mb-1 block text-sm">الملف</span>

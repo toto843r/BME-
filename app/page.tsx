@@ -1,14 +1,12 @@
 import Link from 'next/link';
 import { COURSES } from '@/lib/courses';
 import NextClass from '@/components/NextClass';
-import Schedule from '@/components/Schedule';
 import OmniSearch from '@/components/OmniSearch';
 
 export default function Home() {
   return (
     <div className="space-y-8">
       <NextClass />
-      <Schedule />
       <OmniSearch />
       <section aria-label="المواد">
         <h2 className="mb-3 text-xl font-bold">المواد</h2>

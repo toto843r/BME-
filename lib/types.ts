@@ -15,5 +15,6 @@ export interface Item {
   external_url: string | null;
   uploader_name: string | null;
   status: 'pending' | 'approved' | 'rejected';
+  exam_pick?: boolean;
   created_at: string;
 }
