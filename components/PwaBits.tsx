@@ -13,7 +13,9 @@ export default function PwaBits() {
       else { navigator.serviceWorker.getRegistrations().then((list) => list.forEach((sw) => sw.unregister())).catch(() => {}); }
     }
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-    if (standalone || localStorage.getItem('bme-install-dismissed')) return;
+    let dismissed = false;
+    try { dismissed = !!localStorage.getItem('bme-install-dismissed'); } catch {}
+    if (standalone || dismissed) return;
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
     setIos(isIos);
     if (isIos) setHidden(false);

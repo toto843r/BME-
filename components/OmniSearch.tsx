@@ -11,14 +11,32 @@ import PreviewModal from './PreviewModal';
 
 export default function OmniSearch() {
   const [items, setItems] = useState<Item[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<Item | null>(null);
   const { ids, toggle } = useBookmarks();
 
+  // The search index can contain thousands of lectures. Do not download it
+  // before the student even uses the search box (especially on mobile data).
+  const searching = q.trim().length >= 2;
   useEffect(() => {
-    supabase.from('items').select('*').eq('status', 'approved').order('created_at', { ascending: true }).limit(2000)
-      .then(({ data }) => setItems((data as Item[]) || []));
-  }, []);
+    if (!searching || loaded) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadFailed(false);
+    supabase.from('items')
+      .select('id,subject_slug,track,category,title,tags,badges,file_path,file_kind,attachments,external_url,uploader_name,status,exam_pick,description,created_at')
+      .eq('status', 'approved').order('created_at', { ascending: true }).limit(2000)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLoading(false);
+        if (!error) { setItems((data as Item[]) || []); setLoaded(true); }
+        else setLoadFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, [searching, loaded]);
 
   const results = useMemo(() => {
     const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -39,9 +57,11 @@ export default function OmniSearch() {
           placeholder="ابحث بالعنوان أو المدرس أو الوسم أو الموضوع…"
           className="w-full rounded-xl border border-line bg-panel py-3 pe-3 ps-10 outline-none focus:border-brand" />
       </div>
-      {q.trim().length >= 2 && (
+      {searching && (
         <div className="mt-3 space-y-2">
-          {results.length === 0 && <p className="text-sm text-muted">لا نتائج. جرّب كلمة أقصر أو اسم المادة.</p>}
+          {loading && <p className="text-sm text-muted" role="status">جارٍ تحميل فهرس البحث لأول مرة…</p>}
+          {!loading && loaded && results.length === 0 && <p className="text-sm text-muted">لا نتائج. جرّب كلمة أقصر أو اسم المادة.</p>}
+          {loadFailed && <p className="text-sm text-muted">تعذّر تحميل البحث. تحقق من اتصالك وحاول إعادة فتح الصفحة.</p>}
           {results.map((i) => {
             const c = getCourse(i.subject_slug);
             const sub = `${c?.ar ?? ''}${i.track !== 'main' ? ` – ${TRACK_LABEL[i.track]}` : ''} – ${CATEGORY_AR[i.category]}`;

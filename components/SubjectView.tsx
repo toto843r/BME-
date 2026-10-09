@@ -13,13 +13,23 @@ import RecentFiles from './RecentFiles';
 export default function SubjectView({ slug, track }: { slug: string; track: Track }) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [tab, setTab] = useState<DisplayCategory>('lectures');
   const [crunch, setCrunch] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
   const [open, setOpen] = useState<{ item: Item; index: number } | null>(null);
   const { ids, toggle } = useBookmarks();
 
-  useEffect(() => { setCrunch(localStorage.getItem('bme-crunch') === '1'); }, []);
+  useEffect(() => {
+    try { setCrunch(localStorage.getItem('bme-crunch') === '1'); } catch {}
+  }, []);
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
   // lets the header switch its upload button while the Videos tab is open
   useEffect(() => {
     const d = document.documentElement.dataset;
@@ -29,6 +39,9 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
     return () => { delete d.tab; delete d.slug; delete d.track; };
   }, [tab, crunch, slug, track]);
   useEffect(() => {
+    let cancelled = false;
+    setItems(null);
+    setFailed(false);
     const cacheKey = `bme-public-files-v1-${slug}-${track}`;
     try {
       const saved = localStorage.getItem(cacheKey);
@@ -37,6 +50,7 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
     supabase.from('items').select('*').eq('subject_slug', slug).eq('track', track).eq('status', 'approved')
       .order('created_at', { ascending: true })
       .then(({ data, error }) => {
+        if (cancelled) return;
         if (error) { try { setFailed(!localStorage.getItem(cacheKey)); } catch { setFailed(true); } return; }
         const approved = (data as Item[]) || [];
         setItems(approved); setFailed(false);
@@ -45,6 +59,7 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
           localStorage.setItem(cacheKey, JSON.stringify(approved.slice(0, 100)));
         } catch {}
       });
+    return () => { cancelled = true; };
   }, [slug, track]);
 
   const setCrunchPersist = (v: boolean) => { setCrunch(v); try { localStorage.setItem('bme-crunch', v ? '1' : '0'); } catch {} };
@@ -82,7 +97,7 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
       )}
 
       {failed && <p className="rounded-lg border border-line p-4 text-sm">تعذر تحميل الملفات. تحقق من اتصالك وأعد المحاولة.</p>}
-      {items && typeof navigator !== 'undefined' && !navigator.onLine && <p className="mb-3 rounded-lg bg-brand/10 p-3 text-sm text-muted">تعرض قائمة الملفات المحفوظة من آخر زيارة. يحتاج فتح PDF إلى الإنترنت.</p>}
+      {items && offline && <p className="mb-3 rounded-lg bg-brand/10 p-3 text-sm text-muted">تعرض قائمة الملفات المحفوظة من آخر زيارة. يحتاج فتح PDF إلى الإنترنت.</p>}
       {!failed && items === null && <p className="text-sm text-muted">جارٍ التحميل…</p>}
 
       {items && !crunch && (

@@ -6,6 +6,17 @@ const ALLOWED = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'doc', 'docx', 'ppt', 'ppt
 const MAX = 30 * 1024 * 1024;
 
 export async function POST(req: Request) {
+  // Signed upload tokens must not be minted by cross-site browser requests.
+  // This is defense in depth; deployment-wide rate limiting should also be
+  // configured at the edge if anonymous uploads become a target for spam.
+  const origin = req.headers.get('origin');
+  if (origin) {
+    try {
+      if (new URL(origin).origin !== new URL(req.url).origin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }); }
+  }
   let body: any;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   const ext = String(body.filename || '').split('.').pop()?.toLowerCase() || '';

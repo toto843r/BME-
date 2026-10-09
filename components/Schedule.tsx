@@ -11,8 +11,10 @@ export default function Schedule() {
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    const g = localStorage.getItem('bme-group');
-    if (g === 'A' || g === 'B') setGroup(g);
+    try {
+      const g = localStorage.getItem('bme-group');
+      if (g === 'A' || g === 'B') setGroup(g);
+    } catch { /* Storage can be blocked in private browsing */ }
     setNow(new Date());
     const t = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(t);

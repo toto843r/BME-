@@ -22,3 +22,24 @@ export function validBank(value: unknown): value is QuizBank {
     (q.trueFalse as any[]).every((x) => text(x.question) && typeof x.answer === 'boolean' && text(x.explanation)) &&
     [...q.definitions as any[], ...q.reasons as any[], ...q.diagrams as any[]].every((x) => text(x.question) && text(x.answer));
 }
+
+
+/** Compare short answers without unfairly penalizing case, Arabic diacritics,
+ *  extra whitespace, or a final punctuation mark. Free-text definitions and
+ *  explanations still require manual review. */
+export function normalizeShortAnswer(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // Arabic vowel marks
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // invisible separators
+    .replace(/[\s\u00A0]+/g, ' ')
+    .trim()
+    .replace(/[.،,؛;!?؟]+$/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+export function isBlankAnswerCorrect(given: string, expected: string): boolean {
+  const answer = normalizeShortAnswer(given);
+  return answer.length > 0 && answer === normalizeShortAnswer(expected);
+}
