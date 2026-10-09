@@ -1,5 +1,5 @@
 'use client';
-import { Eye, Flag, PlayCircle, Star } from 'lucide-react';
+import { Eye, Flag, PlayCircle, Share2, Star } from 'lucide-react';
 import type { Item } from '@/lib/types';
 import { BADGES } from '@/lib/courses';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +11,19 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
     if (reason === null) return;
     const { error } = await supabase.from('reports').insert({ item_id: item.id, reason: reason.slice(0, 300) });
     window.alert(error ? 'تعذر إرسال البلاغ، حاول لاحقاً.' : 'وصل البلاغ، شكراً.');
+  }
+  async function share() {
+    const url = `${window.location.origin}/f/${item.id}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: item.title, url }); } catch {}
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      window.alert('تم نسخ الرابط');
+    } catch {
+      window.prompt('انسخ الرابط:', url);
+    }
   }
   const badges = BADGES.filter((b) => item.badges.includes(b.key));
   return (
@@ -31,6 +44,7 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
       <button onClick={onStar} aria-label={starred ? 'إزالة من المفضلة' : 'إضافة للمفضلة'} aria-pressed={starred} className="p-1.5">
         <Star size={19} className={starred ? 'fill-now text-now' : 'text-muted'} />
       </button>
+      <button onClick={share} aria-label="مشاركة الملف" className="p-1.5 text-muted hover:text-ink"><Share2 size={17} /></button>
       <button onClick={report} aria-label="الإبلاغ عن مشكلة" className="p-1.5 text-muted hover:text-ink"><Flag size={17} /></button>
     </div>
   );
