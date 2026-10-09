@@ -36,16 +36,34 @@ export default function Assessment({ slug }: { slug: string }) {
   const total = mid + form;
   const pct = totalMax ? (total / totalMax) * 100 : 0;
 
+  // reject anything above the max (or negative): the field keeps its old value and shows a warning
+  const [warn, setWarn] = useState<string | null>(null);
+  const onType = (p: Part, v: string) => {
+    const n = parseFloat(v.replace(',', '.'));
+    if (v !== '' && Number.isFinite(n) && (n > p.max || n < 0)) {
+      setWarn(p.key);
+      window.setTimeout(() => setWarn((w) => (w === p.key ? null : w)), 2500);
+      return;
+    }
+    set(p.key, v);
+  };
+
   const row = (p: Part) => (
-    <label key={p.key} className="flex items-center gap-3 py-1.5">
-      <span className="flex-1 text-sm">{p.ar}</span>
-      <input type="number" inputMode="decimal" step="0.25" min={0} max={p.max} dir="ltr"
-        value={vals[p.key] ?? ''} placeholder="0"
-        onChange={(e) => set(p.key, e.target.value)}
-        onBlur={(e) => e.target.value !== '' && set(p.key, f(num(e.target.value, p.max)))}
-        className="w-20 rounded-lg border border-line bg-bg px-2 py-1.5 text-center outline-none focus:border-brand" />
-      <span className="w-10 text-sm text-muted" dir="ltr">/ {p.max}</span>
-    </label>
+    <div key={p.key} className="py-1.5">
+      <label className="flex items-center gap-3">
+        <span className="flex-1 text-sm">{p.ar}</span>
+        <input type="number" inputMode="decimal" step="0.25" min={0} max={p.max} dir="ltr"
+          value={vals[p.key] ?? ''} placeholder="0"
+          onChange={(e) => onType(p, e.target.value)}
+          className={`w-20 rounded-lg border bg-bg px-2 py-1.5 text-center outline-none focus:border-brand ${warn === p.key ? 'border-red-500' : 'border-line'}`} />
+        <span className="w-10 text-sm text-muted" dir="ltr">/ {p.max}</span>
+      </label>
+      {warn === p.key && (
+        <p role="alert" className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">
+          الدرجة أعلى من الحد الأعلى ({p.max}) – لم تُقبل.
+        </p>
+      )}
+    </div>
   );
 
   return (

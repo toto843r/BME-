@@ -16,7 +16,7 @@ export default function OmniSearch() {
   const { ids, toggle } = useBookmarks();
 
   useEffect(() => {
-    supabase.from('items').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(2000)
+    supabase.from('items').select('*').eq('status', 'approved').order('created_at', { ascending: true }).limit(2000)
       .then(({ data }) => setItems((data as Item[]) || []));
   }, []);
 

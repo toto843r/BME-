@@ -8,7 +8,6 @@ import { useBookmarks } from '@/lib/useBookmarks';
 import ItemCard from './ItemCard';
 import PreviewModal from './PreviewModal';
 
-const rank = (i: Item) => (i.badges.includes('high_yield') ? 0 : 1);
 
 export default function SubjectView({ slug, track }: { slug: string; track: Track }) {
   const [items, setItems] = useState<Item[] | null>(null);
@@ -30,14 +29,14 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
   }, [tab, crunch, slug, track]);
   useEffect(() => {
     supabase.from('items').select('*').eq('subject_slug', slug).eq('track', track).eq('status', 'approved')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .then(({ data, error }) => (error ? setFailed(true) : setItems((data as Item[]) || [])));
   }, [slug, track]);
 
   const setCrunchPersist = (v: boolean) => { setCrunch(v); try { localStorage.setItem('bme-crunch', v ? '1' : '0'); } catch {} };
 
   const visible = useMemo(
-    () => (items || []).filter((i) => !favOnly || ids.includes(i.id)).sort((a, b) => rank(a) - rank(b)),
+    () => (items || []).filter((i) => !favOnly || ids.includes(i.id)),
     [items, favOnly, ids],
   );
   const by = (c: Category) => visible.filter((i) => i.category === c);

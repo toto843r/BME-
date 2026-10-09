@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         .eq('resolved', false).order('created_at');
       const approved = await db.from('items')
         .select('id, title, subject_slug, track, category, file_path, external_url, created_at, exam_pick, description, file_kind')
-        .eq('status', 'approved').order('created_at', { ascending: false }).limit(500);
+        .eq('status', 'approved').order('created_at', { ascending: true }).limit(500);
       return NextResponse.json({ pending: pending.data || [], reports: reports.data || [], approved: approved.data || [] });
     }
     case 'approve': {

@@ -43,7 +43,7 @@ export default function UploadPage() {
 
   function addFiles(list: FileList | null) {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)].slice(0, MAX_FILES));
+    setFiles((prev) => [...prev, ...Array.from(list)].sort((a, b) => a.lastModified - b.lastModified).slice(0, MAX_FILES));
   }
 
   async function submit(e: React.FormEvent) {
@@ -132,7 +132,7 @@ export default function UploadPage() {
       ) : (
         <div>
           <span className="mb-1 block text-sm">
-            {hasDesc ? 'الملفات أو الصور (اختياري إذا كتبت النص)' : 'الملفات'} – حتى {MAX_FILES} ملفات برسالة واحدة
+            {hasDesc ? 'الملفات أو الصور (اختياري إذا كتبت النص)' : 'الملفات'} – حتى {MAX_FILES} ملفات برسالة واحدة، وتُرتَّب من الأقدم للأحدث
           </span>
           <input type="file" multiple className={field} accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx"
             onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
