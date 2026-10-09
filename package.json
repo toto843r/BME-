@@ -2,13 +2,18 @@
   "name": "bme-portal",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.447.0",
     "next": "15.5.18",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "pdfjs-dist": "5.4.624"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
