@@ -75,22 +75,23 @@ export async function POST(req: Request) {
     case 'move_item': { // move a published item to another course / track / category
       const c = COURSES.find((x) => x.slug === body.slug);
       const cats = ['lectures', 'reports', 'quizzes', 'midterms', 'finals', 'summaries', 'videos'];
+      const category = body.slug === 'biomedical-sensors' && body.category === 'exams_plus' ? 'quizzes' : body.category;
       const track = c?.split ? body.track : 'main';
-      if (!c || !['theory', 'lab', 'main'].includes(track) || (c.split && track === 'main') || !cats.includes(body.category)) {
+      if (!c || !['theory', 'lab', 'main'].includes(track) || (c.split && track === 'main') || !cats.includes(category)) {
         return NextResponse.json({ error: 'وجهة النقل غير صالحة' }, { status: 400 });
       }
-      if ((track === 'lab' && body.category === 'videos') || (track !== 'lab' && body.category === 'reports')) {
+      if ((track === 'lab' && category === 'videos') || (track !== 'lab' && body.category === 'reports')) {
         return NextResponse.json({ error: 'هذا القسم غير متاح لهذا المسار (التقارير للمختبر فقط، والشروحات للنظري فقط).' }, { status: 400 });
       }
       const { data: it } = await db.from('items').select('file_path, file_kind').eq('id', id).single();
       if (it?.file_kind === 'text') {
-        if (!['quizzes', 'midterms', 'finals'].includes(body.category)) {
+        if (!['quizzes', 'midterms', 'finals'].includes(category)) {
           return NextResponse.json({ error: 'النصوص تُنقل للكوزات أو المدات أو الفاينلات فقط.' }, { status: 400 });
         }
-      } else if (!it?.file_path !== (body.category === 'videos')) {
+      } else if (!it?.file_path !== (category === 'videos')) {
         return NextResponse.json({ error: 'الروابط تُنقل لقسم الشروحات فقط، والملفات لباقي الأقسام.' }, { status: 400 });
       }
-      const upd: Record<string, unknown> = { subject_slug: c.slug, track, category: body.category };
+      const upd: Record<string, unknown> = { subject_slug: c.slug, track, category };
       if (typeof body.description === 'string') upd.description = body.description.trim().slice(0, 5000) || null;
       const { error } = await db.from('items').update(upd).eq('id', id);
       return NextResponse.json({ ok: !error, error: error?.message });

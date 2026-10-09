@@ -1,0 +1,12 @@
+BME Portal — النسخة المعدلة
+==========================
+1) احتفظ بملف ZIP الأصلي وبنسخة احتياطية من قاعدة Supabase.
+2) ارفع النسخة الجديدة على GitHub في فرع منفصل وشغل Vercel Preview أولاً، وليس Production مباشرة.
+3) من Supabase -> SQL Editor نفّذ: supabase/quiz_banks.sql (مرة واحدة).
+4) من Google AI Studio أنشئ API key بمشروع Free Tier *بدون Billing*.
+5) من إعدادات Vercel -> Environment Variables أضف GEMINI_API_KEY و GEMINI_MODEL=gemini-3.5-flash-lite، واحتفظ بباقي مفاتيح Supabase وADMIN_PIN الموجودة.
+6) شغّل npm install ثم npm run build واختبر الصفحات الرئيسية، Sensors، الملفات، الإدارة، التثبيت، واختبار PDF قبل النشر.
+7) وافق على ملزمة جديدة: يبدأ توليد الأسئلة تلقائياً. الملازم السابقة: أول ضغط على «اختبر نفسك» يبدأ توليد بنكها مرة واحدة، ثم يُخزن للجميع.
+8) لا تشغّل Billing لأي API. انظر README.md للحدود والملاحظات.
+
+هذه نسخة ملفات معدّلة فقط: لم يُنشر أي شيء على موقعك، ولم تُجر أي تغييرات على حساب Supabase الخاص بك.

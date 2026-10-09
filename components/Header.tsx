@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Link2, Moon, Sun, Upload } from 'lucide-react';
+import { Link2, Moon, Shield, Sun, Upload } from 'lucide-react';
 
 export default function Header() {
   const [dark, setDark] = useState(false);
@@ -31,6 +31,7 @@ export default function Header() {
             className="upload-link-video flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm hover:bg-line/60">
             <Link2 size={16} /> إضافة رابط شرح
           </a>
+          <Link href="/admin" aria-label="لوحة الإدارة" title="لوحة الإدارة" className="rounded-lg p-2 hover:bg-line/60"><Shield size={18} /></Link>
           <button onClick={toggle} aria-label="تبديل الوضع الداكن" className="rounded-lg p-2 hover:bg-line/60">
             {dark ? <Sun size={18} /> : <Moon size={18} />}
           </button>

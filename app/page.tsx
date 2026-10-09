@@ -7,6 +7,7 @@ export default function Home() {
   return (
     <div className="space-y-8">
       <NextClass />
+      <Link href="/schedule" className="inline-flex rounded-lg border border-line bg-panel px-4 py-2 text-sm font-semibold text-brand hover:border-brand">الجدول الكامل والقاعات ←</Link>
       <OmniSearch />
       <section aria-label="المواد">
         <h2 className="mb-3 text-xl font-bold">المواد</h2>

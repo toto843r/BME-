@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { BUCKET, supabase } from '@/lib/supabase';
-import { CATEGORIES, categoriesFor, COURSES, getCourse } from '@/lib/courses';
+import { CATEGORIES, categoriesFor, COURSES, getCourse, normalizeCategory, type DisplayCategory } from '@/lib/courses';
 import { EXT_MIME, kindFromExt } from '@/lib/media';
 import type { Category, Track } from '@/lib/types';
 
@@ -14,7 +14,7 @@ const field = 'w-full rounded-lg border border-line bg-panel px-3 py-2.5 outline
 export default function UploadPage() {
   const [slug, setSlug] = useState(COURSES[0].slug);
   const [track, setTrack] = useState<Track>('theory');
-  const [category, setCategory] = useState<Category>('lectures');
+  const [category, setCategory] = useState<DisplayCategory>('lectures');
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [tags, setTags] = useState('');
@@ -29,17 +29,17 @@ export default function UploadPage() {
     const q = new URLSearchParams(window.location.search);
     const sl = q.get('slug'), c = q.get('category'), t = q.get('track');
     if (sl && getCourse(sl)) setSlug(sl);
-    if (c && CATEGORIES.some((x) => x.key === c)) setCategory(c as Category);
+    if (c && (CATEGORIES.some((x) => x.key === c) || c === 'exams_plus')) setCategory(c as DisplayCategory);
     if (t === 'theory' || t === 'lab') setTrack(t);
   }, []);
 
   const course = getCourse(slug)!;
   const isVideo = category === 'videos';
-  const hasDesc = ['quizzes', 'midterms', 'finals'].includes(category);
+  const hasDesc = ['quizzes', 'midterms', 'finals', 'exams_plus'].includes(category);
   const effTrack: Track = course.split ? (track === 'main' ? 'theory' : track) : 'main';
 
   useEffect(() => {
-    if (!categoriesFor(effTrack).some((c) => c.key === category)) setCategory('lectures');
+    if (!categoriesFor(effTrack, slug).some((c) => c.key === category)) setCategory('lectures');
   }, [effTrack, category]);
 
   function addFiles(list: FileList | null) {
@@ -83,7 +83,7 @@ export default function UploadPage() {
       }
       setProgress('جارٍ الحفظ…');
       const { error } = await supabase.from('items').insert({
-        subject_slug: slug, track: effTrack, category, title: title.trim(),
+        subject_slug: slug, track: effTrack, category: normalizeCategory(category), title: title.trim(),
         tags: tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean).slice(0, 8),
         file_path: uploaded[0]?.path ?? null,
         file_kind: isVideo ? 'video' : uploaded[0]?.kind ?? 'text',
@@ -120,7 +120,7 @@ export default function UploadPage() {
 
       <label className="block"><span className="mb-1 block text-sm">القسم</span>
         <select className={field} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-          {categoriesFor(effTrack).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+          {categoriesFor(effTrack, slug).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
         </select></label>
       <p className="-mt-2 text-xs text-muted">
         {isVideo ? 'قسم الشروحات روابط فقط، ولا يقبل رفع ملفات.' : 'هذا القسم ملفات فقط. الروابط تُضاف في قسم الشروحات.'}
