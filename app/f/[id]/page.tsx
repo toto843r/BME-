@@ -10,13 +10,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   try {
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/items?id=eq.${params.id}&status=eq.approved&select=title,subject_slug&limit=1`;
-    const res = await fetch(url, { headers: { apikey: key, Authorization:/SharedFile';
-imp}, cache: 'no-store' });
+    const res = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' });
     const [it] = await res.json();
     if (!it) return fallback;
-    const title =} from '@/lib/courses';
-
-const UUID = /^[0-9a-f-]{36}$/i;
+    const title = `${it.title} – ${getCourse(it.subject_slug)?.ar ?? ''}`;
     return { title, openGraph: { title, description: 'بوابة الهندسة الطبية – المرحلة الرابعة', type: 'website' } };
   } catch {
     return fallback;

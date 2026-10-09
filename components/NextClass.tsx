@@ -7,10 +7,10 @@ import { getCourse, TRACK_LABEL } from '@/lib/courses';
 const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
 function fmt(total: number) {
-  const h = Math.floor(total / 60), m = total % 60;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
   if (h === 0) return `${m} دقيقة`;
-  return m === 0 ?t Link from ':use client';
-import Link f
+  return m === 0 ? `${h} ساعة` : `${h} ساعة و ${m} دقيقة`;
 }
 
 export default function NextClass() {
@@ -40,9 +40,7 @@ export default function NextClass() {
   let when = '';
 
   if (live) {
-    when =   };
-    tick();
-    const t = setInterva
+    when = `تنتهي بعد ${fmt(mins(live.end) - cur)}`;
   } else {
     let best: { s: (typeof mine)[number]; wait: number } | null = null;
     for (const s of mine) {
@@ -53,21 +51,20 @@ export default function NextClass() {
     if (!best) return null;
     target = best.s;
     const dayOffset = Math.floor((cur + best.wait) / 1440);
-    if (dayOffset === 0) when =? `${h} ساعة` : `${h} ساع
-    else if (dayOffset === 1) when =link';
-import { useEffect, useS
-    else when =port Link from 'next/link';
-import { useEffect, useSt
+    if (dayOffset === 0) when = `بعد ${fmt(best.wait)}`;
+    else if (dayOffset === 1) when = `غداً الساعة ${best.s.start}`;
+    else when = `يوم ${DAYS_AR[best.s.day]} الساعة ${best.s.start}`;
   }
 
   const c = target ? getCourse(target.slug) : null;
   if (!target || !c) return null;
-  const href = SCHEDULE } from '@/lib/schedule';
-import { getCourse, track=${target.track}` : ''}`;
+  const href = `/subject/${target.slug}${target.track !== 'main' ? `?track=${target.track}` : ''}`;
 
   return (
-    <Link href={href}
-      className={`flex items-center gap-4 rounded-2xl border-2 p-4 ${live ? 'border-now bg-now/20' : 'border-brand bg-panel'}`}>
+    <Link
+      href={href}
+      className={`flex items-center gap-4 rounded-2xl border-2 p-4 ${live ? 'border-now bg-now/20' : 'border-brand bg-panel'}`}
+    >
       <div className="min-w-0 flex-1">
         <p className="text-sm text-muted">{live ? 'الآن' : 'محاضرتك الجاية'} – شعبة {group}</p>
         <p className="text-xl font-bold leading-snug">
