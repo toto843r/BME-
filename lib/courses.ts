@@ -28,12 +28,16 @@ export const TRACK_LABEL: Record<Track, string> = { theory: 'نظري', lab: 'م
 
 export const CATEGORIES: { key: Category; ar: string; en: string }[] = [
   { key: 'lectures', ar: 'الملازم', en: 'Lectures & Slides' },
+  { key: 'reports', ar: 'التقارير', en: 'Lab Reports' },
   { key: 'quizzes', ar: 'الكوزات', en: 'Quizzes' },
   { key: 'midterms', ar: 'المدات', en: 'Midterm Exams' },
   { key: 'finals', ar: 'الفاينلات', en: 'Finals & Previous Years' },
   { key: 'summaries', ar: 'الملخصات', en: 'Summaries & Cheat Sheets' },
   { key: 'videos', ar: 'الشروحات', en: 'Video Tutorials & Links' },
 ];
+// Lab track: Reports instead of Videos. Theory / main tracks: Videos, no Reports.
+export const categoriesFor = (track: Track) =>
+  CATEGORIES.filter((c) => (track === 'lab' ? c.key !== 'videos' : c.key !== 'reports'));
 export const CATEGORY_AR = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.ar])) as Record<Category, string>;
 // Exam Crunch Mode keeps only these, in this order
 export const CRUNCH: Category[] = ['finals', 'midterms', 'quizzes', 'summaries'];

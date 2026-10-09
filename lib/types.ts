@@ -1,5 +1,5 @@
 export type Track = 'theory' | 'lab' | 'main';
-export type Category = 'lectures' | 'quizzes' | 'midterms' | 'finals' | 'summaries' | 'videos';
+export type Category = 'lectures' | 'reports' | 'quizzes' | 'midterms' | 'finals' | 'summaries' | 'videos';
 export type FileKind = 'pdf' | 'image' | 'doc' | 'video' | 'link';
 
 export interface Item {
@@ -16,5 +16,6 @@ export interface Item {
   uploader_name: string | null;
   status: 'pending' | 'approved' | 'rejected';
   exam_pick?: boolean;
+  description?: string | null;
   created_at: string;
 }

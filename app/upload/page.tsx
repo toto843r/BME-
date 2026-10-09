@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { BUCKET, supabase } from '@/lib/supabase';
-import { CATEGORIES, COURSES, getCourse } from '@/lib/courses';
+import { CATEGORIES, categoriesFor, COURSES, getCourse } from '@/lib/courses';
 import { EXT_MIME, kindFromExt } from '@/lib/media';
 import type { Category, Track } from '@/lib/types';
 
@@ -15,6 +15,7 @@ export default function UploadPage() {
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState('');
   const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
   const [url, setUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,7 +31,12 @@ export default function UploadPage() {
 
   const course = getCourse(slug)!;
   const isVideo = category === 'videos';
+  const hasDesc = ['quizzes', 'midterms', 'finals'].includes(category);
   const effTrack: Track = course.split ? (track === 'main' ? 'theory' : track) : 'main';
+
+  useEffect(() => {
+    if (!categoriesFor(effTrack).some((c) => c.key === category)) setCategory('lectures');
+  }, [effTrack, category]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,10 +66,11 @@ export default function UploadPage() {
         tags: tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean).slice(0, 8),
         file_path, file_kind, external_url: isVideo ? url.trim() : null,
         uploader_name: name.trim() || null,
+        description: hasDesc ? desc.trim().slice(0, 500) || null : null,
       });
       if (error) throw error;
       setMsg({ ok: true, text: 'وصل الملف وهو بانتظار مراجعة المشرف. سيظهر بعد الموافقة.' });
-      setTitle(''); setTags(''); setUrl(''); setFile(null);
+      setTitle(''); setDesc(''); setTags(''); setUrl(''); setFile(null);
     } catch (err: any) {
       setMsg({ ok: false, text: `فشل الرفع: ${err?.message || 'خطأ غير معروف'}` });
     } finally { setBusy(false); }
@@ -88,7 +95,7 @@ export default function UploadPage() {
 
       <label className="block"><span className="mb-1 block text-sm">القسم</span>
         <select className={field} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-          {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+          {categoriesFor(effTrack).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
         </select></label>
 
       <p className="-mt-2 text-xs text-muted">
@@ -97,6 +104,13 @@ export default function UploadPage() {
 
       <label className="block"><span className="mb-1 block text-sm">العنوان</span>
         <input className={field} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="مثال: فاينل 2024 – الدور الأول" /></label>
+
+      {hasDesc && (
+        <label className="block"><span className="mb-1 block text-sm">وصف الملف (اختياري)</span>
+          <textarea className={field} rows={3} maxLength={500} value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="مثال: الأسئلة من 1 إلى 15، الحل بخط اليد في آخر صفحة" />
+          <span className="mt-1 block text-xs text-muted">{desc.length}/500</span></label>
+      )}
 
       {isVideo ? (
         <label className="block"><span className="mb-1 block text-sm">رابط الشرح (YouTube أو Google Drive أو تلكرام أو أي رابط)</span>

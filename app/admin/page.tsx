@@ -1,14 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { ArrowLeftRight, Check, Trash2, X, Zap } from 'lucide-react';
-import { BADGES, CATEGORIES, CATEGORY_AR, COURSES, getCourse } from '@/lib/courses';
+import { BADGES, CATEGORIES, categoriesFor, CATEGORY_AR, COURSES, getCourse } from '@/lib/courses';
 import { fileUrl } from '@/lib/supabase';
-import type { Item } from '@/lib/types';
+import type { Item, Track } from '@/lib/types';
 
 interface Report { id: string; reason: string | null; items: any }
 interface Pub {
   id: string; title: string; subject_slug: string; track: string; category: string;
-  file_path: string | null; external_url: string | null; exam_pick?: boolean;
+  file_path: string | null; external_url: string | null; exam_pick?: boolean; description?: string | null;
 }
 
 const sel = 'w-full rounded-lg border border-line bg-bg px-2 py-2 text-sm';
@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [mSlug, setMSlug] = useState('');
   const [mTrack, setMTrack] = useState('theory');
   const [mCat, setMCat] = useState('lectures');
+  const [mDesc, setMDesc] = useState('');
   const [err, setErr] = useState('');
 
   async function call(action: string, extra: object = {}) {
@@ -48,12 +49,16 @@ export default function AdminPage() {
 
   function startMove(i: Pub) {
     if (moving === i.id) return setMoving(null);
-    setMoving(i.id); setMSlug(i.subject_slug); setMCat(i.category);
+    setMoving(i.id); setMSlug(i.subject_slug); setMCat(i.category); setMDesc(i.description || '');
     setMTrack(getCourse(i.subject_slug)?.split ? (i.track === 'lab' ? 'lab' : 'theory') : 'main');
   }
-  function changeCourse(slug: string) {
-    setMSlug(slug);
-    setMTrack(getCourse(slug)?.split ? 'theory' : 'main');
+  const validCat = (t: string, cat: string, isFile: boolean) => {
+    const list = categoriesFor(t as Track).filter((c) => (c.key === 'videos') === !isFile);
+    return list.some((c) => c.key === cat) ? cat : (list[0]?.key ?? cat);
+  };
+  function changeCourse(slug: string, isFile: boolean) {
+    const t = getCourse(slug)?.split ? 'theory' : 'main';
+    setMSlug(slug); setMTrack(t); setMCat((c) => validCat(t, c, isFile));
   }
 
   const q = filter.trim().toLowerCase();
@@ -70,26 +75,28 @@ export default function AdminPage() {
           className={`rounded-lg border p-2 ${i.exam_pick ? 'border-now bg-now text-[#10242B]' : 'border-line text-muted'}`}>
           <Zap size={16} />
         </button>
-        <button onClick={() => startMove(i)} aria-label="نقل" className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-sm">
-          <ArrowLeftRight size={15} /> نقل
+        <button onClick={() => startMove(i)} aria-label="تعديل أو نقل" className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-sm">
+          <ArrowLeftRight size={15} /> تعديل
         </button>
         <button onClick={() => window.confirm('حذف هذا الملف نهائياً؟') && act('remove_item', i.id)} aria-label="حذف"
           className="rounded-lg border border-now p-2"><Trash2 size={16} /></button>
       </div>
+      {i.description && moving !== i.id && <p className="mt-1.5 whitespace-pre-line text-xs text-muted">{i.description}</p>}
       {moving === i.id && (
         <div className="mt-2.5 space-y-2 border-t border-line pt-2.5">
-          <select className={sel} value={mSlug} onChange={(e) => changeCourse(e.target.value)}>
+          <select className={sel} value={mSlug} onChange={(e) => changeCourse(e.target.value, !!i.file_path)}>
             {COURSES.map((c) => <option key={c.slug} value={c.slug}>{c.ar}</option>)}
           </select>
-          <select className={sel} value={mTrack} onChange={(e) => setMTrack(e.target.value)}>
+          <select className={sel} value={mTrack} onChange={(e) => { setMTrack(e.target.value); setMCat((c) => validCat(e.target.value, c, !!i.file_path)); }}>
             {trackOptions(mSlug).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <select className={sel} value={mCat} onChange={(e) => setMCat(e.target.value)}>
-            {CATEGORIES.filter((c) => (c.key === 'videos') === !i.file_path).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+            {categoriesFor(mTrack as Track).filter((c) => (c.key === 'videos') === !i.file_path).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
           </select>
+          <textarea className={sel} rows={3} maxLength={500} value={mDesc} onChange={(e) => setMDesc(e.target.value)} placeholder="وصف الملف (اختياري)" />
           <div className="flex gap-2">
-            <button onClick={() => { act('move_item', i.id, { slug: mSlug, track: mTrack, category: mCat }); setMoving(null); }}
-              className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-onbrand">حفظ النقل</button>
+            <button onClick={() => { act('move_item', i.id, { slug: mSlug, track: mTrack, category: mCat, description: mDesc }); setMoving(null); }}
+              className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-onbrand">حفظ</button>
             <button onClick={() => setMoving(null)} className="rounded-lg border border-line px-4 py-2 text-sm">إلغاء</button>
           </div>
         </div>
@@ -125,6 +132,7 @@ export default function AdminPage() {
                 {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{CATEGORY_AR[i.category]}
                 {i.uploader_name && ` – من ${i.uploader_name}`}
               </p>
+              {i.description && <p className="mt-1.5 whitespace-pre-line text-sm">{i.description}</p>}
               <div className="mt-2 flex flex-wrap gap-3 text-sm">
                 {BADGES.map((b) => (
                   <label key={b.key} className="flex items-center gap-1.5">

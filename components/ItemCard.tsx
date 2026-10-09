@@ -32,6 +32,7 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
         <span className="mt-0.5 text-brand">{item.file_kind === 'video' ? <PlayCircle size={22} /> : <Eye size={22} />}</span>
         <span className="min-w-0 flex-1">
           <span className="block font-medium leading-snug">{item.title}</span>
+          {item.description && <span className="mt-1 block whitespace-pre-line text-sm text-muted">{item.description}</span>}
           {subtitle && <span className="mt-0.5 block text-xs text-muted">{subtitle}</span>}
           {(badges.length > 0 || item.tags.length > 0) && (
             <span className="mt-1.5 flex flex-wrap gap-1.5">

@@ -50,6 +50,9 @@ export default function PreviewModal({ item, onClose }: { item: Item | null; onC
           <a href={url} target="_blank" rel="noopener noreferrer" aria-label="فتح في تبويب جديد" className="rounded-lg p-2 hover:bg-line/60"><ExternalLink size={17} /></a>
           <button onClick={onClose} aria-label="إغلاق" className="rounded-lg p-2 hover:bg-line/60"><X size={18} /></button>
         </div>
+        {item.description && (
+          <p className="max-h-28 overflow-auto whitespace-pre-line border-b border-line p-3 text-sm">{item.description}</p>
+        )}
         <div className="min-h-0 flex-1">{body}</div>
       </div>
     </div>

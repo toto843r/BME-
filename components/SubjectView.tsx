@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Star, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Category, Item, Track } from '@/lib/types';
-import { CATEGORIES } from '@/lib/courses';
+import { categoriesFor } from '@/lib/courses';
 import { useBookmarks } from '@/lib/useBookmarks';
 import ItemCard from './ItemCard';
 import PreviewModal from './PreviewModal';
@@ -58,7 +58,7 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
 
       {!crunch && (
         <div role="tablist" className="no-scrollbar mb-4 flex gap-1.5 overflow-x-auto">
-          {CATEGORIES.map((c) => (
+          {categoriesFor(track).map((c) => (
             <button key={c.key} role="tab" aria-selected={tab === c.key} onClick={() => setTab(c.key)}
               className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold ${tab === c.key ? 'bg-brand text-onbrand' : 'bg-panel text-muted border border-line'}`}>
               {c.ar} <span className="opacity-70">{by(c.key).length}</span>
@@ -75,16 +75,21 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
           {tab === 'videos' && (
             <p className="mb-1 rounded-lg bg-brand/10 p-3 text-sm">هذا القسم مخصص لروابط الشروحات (فيديوهات وقنوات ومجلدات). الروابط تُفتح من هنا مباشرة.</p>
           )}
+          {tab === 'reports' && (
+            <p className="mb-1 rounded-lg bg-brand/10 p-3 text-sm">هذا القسم مخصص لتقارير المختبر.</p>
+          )}
           {by(tab).length === 0 && (tab === 'videos'
             ? <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">لا تتوفر روابط شروحات حالياً.</p>
-            : <Empty />)}
+            : tab === 'reports'
+              ? <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">لا تتوفر تقارير حالياً.</p>
+              : <Empty />)}
           {by(tab).map(card)}
         </div>
       )}
       {items && crunch && (
         <div className="space-y-6">
           <p className="rounded-lg bg-now/20 p-3 text-sm">ملفات اختارها المشرف للمراجعة السريعة قبل الامتحان.</p>
-          {CATEGORIES.map((cat) => {
+          {categoriesFor(track).map((cat) => {
             const list = by(cat.key).filter((i) => i.exam_pick);
             return list.length ? (
               <div key={cat.key}>

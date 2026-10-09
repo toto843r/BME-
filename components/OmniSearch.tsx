@@ -25,7 +25,7 @@ export default function OmniSearch() {
     if (q.trim().length < 2) return [];
     return items.filter((i) => {
       const c = getCourse(i.subject_slug);
-      const hay = [i.title, ...i.tags, c?.ar, c?.en, c?.instructors[i.track], CATEGORY_AR[i.category], TRACK_LABEL[i.track]]
+      const hay = [i.title, i.description, ...i.tags, c?.ar, c?.en, c?.instructors[i.track], CATEGORY_AR[i.category], TRACK_LABEL[i.track]]
         .filter(Boolean).join(' ').toLowerCase();
       return tokens.every((t) => hay.includes(t));
     }).slice(0, 40);
