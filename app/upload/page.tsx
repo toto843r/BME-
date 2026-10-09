@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { BUCKET, supabase } from '@/lib/supabase';
@@ -43,7 +44,8 @@ export default function UploadPage() {
 
   function addFiles(list: FileList | null) {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)].sort((a, b) => a.lastModified - b.lastModified).slice(0, MAX_FILES));
+    const picked = Array.from(list); // copy NOW: clearing the input empties the live FileList
+    setFiles((prev) => [...prev, ...picked].slice(0, MAX_FILES));
   }
 
   async function submit(e: React.FormEvent) {
@@ -58,19 +60,26 @@ export default function UploadPage() {
     setBusy(true);
     try {
       const uploaded: { path: string; kind: string; name: string }[] = [];
+      const uploadOne = async (f: File) => {
+        const ext = (f.name.split('.').pop() || '').toLowerCase();
+        const r = await fetch('/api/upload/sign', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: f.name, size: f.size }) });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || 'sign');
+        const up = await supabase.storage.from(BUCKET).uploadToSignedUrl(j.path, j.token, f, { contentType: EXT_MIME[ext] });
+        if (up.error) throw up.error;
+        return { path: j.path as string, kind: kindFromExt(ext), name: f.name };
+      };
       if (!isVideo) {
         for (let n = 0; n < files.length; n++) {
-          const f = files[n];
           setProgress(`جارٍ رفع ${n + 1} من ${files.length}…`);
-          const ext = (f.name.split('.').pop() || '').toLowerCase();
-          const r = await fetch('/api/upload/sign', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename: f.name, size: f.size }) });
-          const j = await r.json();
-          if (!r.ok) throw new Error(j.error || 'sign');
-          const up = await supabase.storage.from(BUCKET).uploadToSignedUrl(j.path, j.token, f, { contentType: EXT_MIME[ext] });
-          if (up.error) throw up.error;
-          uploaded.push({ path: j.path, kind: kindFromExt(ext), name: f.name });
+          let done: { path: string; kind: string; name: string } | null = null;
+          for (let attempt = 0; attempt < 2 && !done; attempt++) {   // one automatic retry per file
+            try { done = await uploadOne(files[n]); } catch (e) { if (attempt === 1) throw e; }
+          }
+          uploaded.push(done!);
         }
+        if (uploaded.length !== files.length) throw new Error('لم تكتمل رفع كل الملفات، حاول مرة ثانية.');
       }
       setProgress('جارٍ الحفظ…');
       const { error } = await supabase.from('items').insert({
@@ -93,6 +102,7 @@ export default function UploadPage() {
 
   return (
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-4">
+      <Link href="/" className="inline-block text-sm text-muted hover:text-ink">← الرئيسية</Link>
       <h1 className="text-2xl font-bold">رفع ملف</h1>
       <p className="text-sm text-muted">كل رفعة تمر على مراجعة المشرف قبل ظهورها. الصيغ: PDF، صور، Word، PowerPoint (حتى 30 ميغابايت للملف).</p>
 
@@ -132,7 +142,7 @@ export default function UploadPage() {
       ) : (
         <div>
           <span className="mb-1 block text-sm">
-            {hasDesc ? 'الملفات أو الصور (اختياري إذا كتبت النص)' : 'الملفات'} – حتى {MAX_FILES} ملفات برسالة واحدة، وتُرتَّب من الأقدم للأحدث
+            {hasDesc ? 'الملفات أو الصور (اختياري إذا كتبت النص)' : 'الملفات'} – حتى {MAX_FILES} ملفات برسالة واحدة، وتظهر بنفس ترتيب اختيارها
           </span>
           <input type="file" multiple className={field} accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.ppt,.pptx"
             onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />

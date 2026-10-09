@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { formativeFor, MIDTERM, type Part } from '@/lib/assessment';
 
 const num = (v: string | undefined, max: number) => {
@@ -11,6 +12,8 @@ const f = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace
 export default function Assessment({ slug }: { slug: string }) {
   const storeKey = `bme-sai-${slug}`;
   const [vals, setVals] = useState<Record<string, string>>({});
+  const [open, setOpen] = useState(false);
+  const [warn, setWarn] = useState<string | null>(null);
 
   useEffect(() => {
     try { setVals(JSON.parse(localStorage.getItem(storeKey) || '{}')); } catch {}
@@ -28,16 +31,7 @@ export default function Assessment({ slug }: { slug: string }) {
     try { localStorage.removeItem(storeKey); } catch {}
   };
 
-  const formative = formativeFor(slug);
-  const formMax = formative.reduce((s, p) => s + p.max, 0);
-  const totalMax = MIDTERM.max + formMax;
-  const mid = num(vals[MIDTERM.key], MIDTERM.max);
-  const form = formative.reduce((s, p) => s + num(vals[p.key], p.max), 0);
-  const total = mid + form;
-  const pct = totalMax ? (total / totalMax) * 100 : 0;
-
   // reject anything above the max (or negative): the field keeps its old value and shows a warning
-  const [warn, setWarn] = useState<string | null>(null);
   const onType = (p: Part, v: string) => {
     const n = parseFloat(v.replace(',', '.'));
     if (v !== '' && Number.isFinite(n) && (n > p.max || n < 0)) {
@@ -47,6 +41,14 @@ export default function Assessment({ slug }: { slug: string }) {
     }
     set(p.key, v);
   };
+
+  const formative = formativeFor(slug);
+  const formMax = formative.reduce((s, p) => s + p.max, 0);
+  const totalMax = MIDTERM.max + formMax;
+  const mid = num(vals[MIDTERM.key], MIDTERM.max);
+  const form = formative.reduce((s, p) => s + num(vals[p.key], p.max), 0);
+  const total = mid + form;
+  const pct = totalMax ? (total / totalMax) * 100 : 0;
 
   const row = (p: Part) => (
     <div key={p.key} className="py-1.5">
@@ -67,35 +69,43 @@ export default function Assessment({ slug }: { slug: string }) {
   );
 
   return (
-    <section className="mb-6 rounded-2xl border-2 border-brand bg-panel p-4" aria-label="السعي">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold">السعي</h2>
-          <p className="text-xs text-muted">درجاتك تُحفظ على جهازك فقط ولا تُرسل لأحد.</p>
-        </div>
-        <p className="text-3xl font-bold text-brand" dir="ltr">
-          {f(total)}<span className="text-lg font-normal text-muted"> / {totalMax}</span>
-        </p>
-      </div>
+    <section className="mb-6 rounded-2xl border-2 border-brand bg-panel" aria-label="السعي">
+      {/* always visible: title + counter + bar. Tap to show / hide the details */}
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="block w-full p-4 text-start">
+        <span className="flex items-end justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <span className="text-xl font-bold">السعي</span>
+            <ChevronDown size={20} className={`text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+          </span>
+          <span className="text-3xl font-bold text-brand" dir="ltr">
+            {f(total)}<span className="text-lg font-normal text-muted"> / {totalMax}</span>
+          </span>
+        </span>
+        <span className="mt-3 block h-4 w-full overflow-hidden rounded-full bg-line" role="progressbar"
+          aria-valuenow={Math.round(total * 100) / 100} aria-valuemin={0} aria-valuemax={totalMax}>
+          <span className="block h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
+        </span>
+        <span className="mt-1 block text-xs text-muted">
+          المتبقي: {f(totalMax - total)} – {open ? 'اضغط للإخفاء' : 'اضغط لإدخال الدرجات'}
+        </span>
+      </button>
 
-      <div className="mt-3 h-4 w-full overflow-hidden rounded-full bg-line" role="progressbar"
-        aria-valuenow={Math.round(total * 100) / 100} aria-valuemin={0} aria-valuemax={totalMax}>
-        <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
-      </div>
-      <p className="mt-1 text-xs text-muted">المتبقي من السعي: {f(totalMax - total)}</p>
-
-      <div className="mt-4 divide-y divide-line">
-        <div className="pb-2">{row(MIDTERM)}</div>
-        <div className="pt-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold">السعي التكويني</h3>
-            <span className="text-sm font-bold text-brand" dir="ltr">{f(form)} / {formMax}</span>
+      {open && (
+        <div className="border-t border-line px-4 pb-4 pt-3">
+          <p className="mb-2 text-xs text-muted">درجاتك تُحفظ على جهازك فقط ولا تُرسل لأحد.</p>
+          <div className="divide-y divide-line">
+            <div className="pb-2">{row(MIDTERM)}</div>
+            <div className="pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold">السعي التكويني</h3>
+                <span className="text-sm font-bold text-brand" dir="ltr">{f(form)} / {formMax}</span>
+              </div>
+              {formative.map(row)}
+            </div>
           </div>
-          {formative.map(row)}
+          <button onClick={reset} className="mt-3 text-xs text-muted underline">مسح الدرجات</button>
         </div>
-      </div>
-
-      <button onClick={reset} className="mt-3 text-xs text-muted underline">مسح الدرجات</button>
+      )}
     </section>
   );
 }

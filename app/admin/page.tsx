@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowLeftRight, Check, Trash2, X, Zap } from 'lucide-react';
 import { BADGES, CATEGORIES, categoriesFor, CATEGORY_AR, COURSES, getCourse } from '@/lib/courses';
@@ -114,6 +115,7 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <form onSubmit={(e) => { e.preventDefault(); load(); }} className="mx-auto max-w-xs space-y-3">
+        <Link href="/" className="inline-block text-sm text-muted hover:text-ink">← الرئيسية</Link>
         <h1 className="text-2xl font-bold">لوحة المشرف</h1>
         <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" autoComplete="off"
           className="w-full rounded-lg border border-line bg-panel px-3 py-2.5" dir="ltr" />
@@ -125,7 +127,8 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">لوحة المشرف</h1>
+      <Link href="/" className="inline-block text-sm text-muted hover:text-ink">← الرئيسية</Link>
+        <h1 className="text-2xl font-bold">لوحة المشرف</h1>
       {err && <p className="rounded-lg border border-now p-3 text-sm">{err}</p>}
 
       <section>
