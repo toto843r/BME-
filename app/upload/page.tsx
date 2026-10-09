@@ -82,8 +82,10 @@ export default function UploadPage() {
         if (uploaded.length !== files.length) throw new Error('لم تكتمل رفع كل الملفات، حاول مرة ثانية.');
       }
       setProgress('جارٍ الحفظ…');
+      // Generate a client-side id because pending rows are not selectable by anonymous users.
+      const itemId = crypto.randomUUID();
       const { error } = await supabase.from('items').insert({
-        subject_slug: slug, track: effTrack, category: normalizeCategory(category), title: title.trim(),
+        id: itemId, subject_slug: slug, track: effTrack, category: normalizeCategory(category), title: title.trim(),
         tags: tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean).slice(0, 8),
         file_path: uploaded[0]?.path ?? null,
         file_kind: isVideo ? 'video' : uploaded[0]?.kind ?? 'text',
@@ -93,7 +95,21 @@ export default function UploadPage() {
         description: hasDesc ? desc.trim().slice(0, 5000) || null : null,
       });
       if (error) throw error;
-      setMsg({ ok: true, text: 'وصل وهو بانتظار مراجعة المشرف. سيظهر بعد الموافقة.' });
+      // Fire-and-forget after the database insert: the user never waits for Gemini.
+      // The server verifies the new pending lecture and its PDF paths. A daily
+      // production reconciliation job picks up anything interrupted.
+      if (category === 'lectures' && uploaded.some((entry) => entry.kind === 'pdf')) {
+        void fetch('/api/quiz/queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId }),
+          cache: 'no-store',
+          // Keep the small trigger request alive if the student leaves the page.
+          // The PDF is NOT uploaded twice and no quiz data is sent from the browser.
+          keepalive: true,
+        }).catch(() => { /* Scheduled reconciliation retries in Production. */ });
+      }
+      setMsg({ ok: true, text: 'تم الرفع بنجاح وهو بانتظار مراجعة المشرف للنشر. تُجهّز أسئلة PDF تلقائياً بالخلفية.' });
       setTitle(''); setDesc(''); setTags(''); setUrl(''); setFiles([]);
     } catch (err: any) {
       setMsg({ ok: false, text: `فشل الرفع: ${err?.message || 'خطأ غير معروف'}` });

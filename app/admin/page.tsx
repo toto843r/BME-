@@ -44,21 +44,7 @@ export default function AdminPage() {
     const { ok, j } = await call(action, { id, ...extra });
     if (!ok || j.error) setErr(j.error || 'فشلت العملية'); else {
       setErr('');
-      // Approval starts one-time quiz generation automatically for a PDF lecture.
-      // First student visit also retries if admin leaves before processing finishes.
-      if (action === 'approve') {
-        const it = pending.find((entry) => entry.id === id);
-        if (it?.category === 'lectures') {
-          const pdfPaths = [
-            ...(it.file_path && it.file_kind === 'pdf' ? [it.file_path] : []),
-            ...(it.attachments || []).filter((f) => f.kind === 'pdf').map((f) => f.path),
-          ];
-          // Sequential on this browser, capped; never block approval UI.
-          void (async () => { for (const path of pdfPaths) {
-            try { await fetch(`/api/quiz/${id}?file=${encodeURIComponent(path)}`, { method: 'POST' }); } catch {}
-          } })();
-        }
-      }
+      // Approval publishes the material; quiz preparation starts on upload.
       load();
     }
   }

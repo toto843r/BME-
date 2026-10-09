@@ -46,7 +46,6 @@ export default function QuizClient({ id, file }: { id: string; file: string }) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let started = false;
     let polls = 0;
     const load = async () => {
       if (stopped) return;
@@ -61,17 +60,8 @@ export default function QuizClient({ id, file }: { id: string; file: string }) {
         if (data.status === 'failed') {
           setStatus('failed'); setMessage(data.error || 'تعذر إنشاء الاختبار حالياً.'); return;
         }
-        setStatus('generating');
-        // A single client starts the generation, all others only poll existing state.
-        if (!started && data.status === 'pending') {
-          started = true;
-          void fetch(endpoint, { method: 'POST' }).then(async (result) => {
-            if (!result.ok && result.status !== 202 && !stopped) {
-              const j = await result.json().catch(() => ({}));
-              if (j.status === 'unconfigured') { setStatus('failed'); setMessage(j.error || 'لم يُجهز نظام الأسئلة بعد.'); stopped = true; }
-            }
-          }).catch(() => {});
-        }
+        setStatus(data.status === 'generating' ? 'generating' : 'pending');
+        // Students never initiate AI generation; the admin workflow/cron prepares shared banks.
         if (++polls < 36) timer = setTimeout(load, 5000);
         else { setStatus('waiting'); setMessage('تجهيز الأسئلة يستغرق وقتاً أطول من المعتاد. أعد فتح الاختبار لاحقاً.'); }
       } catch {
@@ -101,8 +91,8 @@ export default function QuizClient({ id, file }: { id: string; file: string }) {
   if (status !== 'ready' || !bank) {
     return <div className="space-y-3 rounded-xl border border-line bg-panel p-6 text-center" role="status">
       <BookOpenCheck size={32} className="mx-auto text-brand" />
-      <p className="font-bold">{status === 'generating' ? 'جارٍ تحضير بنك الأسئلة للمرة الأولى…' : status === 'waiting' ? 'الأسئلة قيد التحضير' : 'الأسئلة غير جاهزة بعد'}</p>
-      <p className="text-sm text-muted">{message || 'سيُحفظ بنك الأسئلة بعد توليده مرة واحدة، وتستخدمه بقية الطلبة دون توليد إضافي. لا تتطلب زيارة الاختبار تحميل ملف PDF.'}</p>
+      <p className="font-bold">{status === 'generating' ? 'جارٍ تجهيز الأسئلة…' : status === 'waiting' ? 'بانتظار تجهيز الأسئلة تلقائياً' : 'الأسئلة بانتظار التجهيز التلقائي'}</p>
+      <p className="text-sm text-muted">{message || 'يولّد النظام بنك الأسئلة ويحفظه مرة واحدة للجميع. فتحك للاختبار لا يشغّل الذكاء الاصطناعي ولا يحمّل ملف PDF.'}</p>
       {(status === 'failed' || status === 'waiting') && <button onClick={() => { setMessage(''); setStatus('pending'); setAttempt((v) => v + 1); }} className="rounded-lg border border-line px-4 py-2 text-sm">تحقق مجدداً</button>}
     </div>;
   }
