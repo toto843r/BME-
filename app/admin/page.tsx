@@ -176,7 +176,7 @@ export default function AdminPage() {
                 </span>
               )}
               <p className="mt-0.5 text-xs text-muted">
-                {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{i.subject_slug === 'biomedical-sensors' && ['quizzes','midterms'].includes(i.category) ? 'امتحانات+' : CATEGORY_AR[i.category]}
+                {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{i.subject_slug === 'biomedical-sensors' && ['quizzes','midterms'].includes(i.category) ? 'الامتحانات' : CATEGORY_AR[i.category]}
                 {i.uploader_name && ` – من ${i.uploader_name}`}
               </p>
               {i.description && <p className="mt-1.5 whitespace-pre-line text-sm">{i.description}</p>}

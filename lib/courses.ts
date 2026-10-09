@@ -42,7 +42,7 @@ export const categoriesFor = (track: Track, slug?: string): { key: DisplayCatego
   if (slug !== 'biomedical-sensors') return list;
   const display: { key: DisplayCategory; ar: string; en: string }[] = [];
   for (const c of list) {
-    if (c.key === 'quizzes') display.push({ key: 'exams_plus', ar: 'امتحانات+', en: 'Exams+' });
+    if (c.key === 'quizzes') display.push({ key: 'exams_plus', ar: 'الامتحانات', en: 'Exams' });
     else if (c.key !== 'midterms') display.push(c);
   }
   return display;
