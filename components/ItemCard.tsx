@@ -26,6 +26,7 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
     }
   }
   const badges = BADGES.filter((b) => item.badges.includes(b.key));
+  const nFiles = (item.attachments?.length ?? 0) + (item.file_path ? 1 : 0);
   return (
     <div className="flex items-start gap-3 rounded-xl border border-line bg-panel p-3">
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 text-start">
@@ -34,8 +35,9 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
           <span className="block font-medium leading-snug">{item.title}</span>
           {item.description && <span dir="auto" className="mt-1 line-clamp-3 block whitespace-pre-line text-start text-sm text-muted">{item.description}</span>}
           {subtitle && <span className="mt-0.5 block text-xs text-muted">{subtitle}</span>}
-          {(badges.length > 0 || item.tags.length > 0) && (
+          {(badges.length > 0 || item.tags.length > 0 || nFiles > 1) && (
             <span className="mt-1.5 flex flex-wrap gap-1.5">
+              {nFiles > 1 && <span className="rounded-md bg-brand/15 px-1.5 py-0.5 text-xs font-semibold text-brand">{nFiles} ملفات</span>}
               {badges.map((b) => <span key={b.key} className={`rounded-md border px-1.5 py-0.5 text-xs font-semibold ${b.cls}`}>{b.label}</span>)}
               {item.tags.map((t) => <span key={t} className="rounded-md bg-line/70 px-1.5 py-0.5 text-xs text-muted">{t}</span>)}
             </span>

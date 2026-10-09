@@ -17,5 +17,6 @@ export interface Item {
   status: 'pending' | 'approved' | 'rejected';
   exam_pick?: boolean;
   description?: string | null;
+  attachments?: { path: string; kind: string; name?: string }[];
   created_at: string;
 }

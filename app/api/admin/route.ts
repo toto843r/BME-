@@ -30,8 +30,16 @@ export async function POST(req: Request) {
   const id = String(body.id || '');
 
   async function removeFile(itemId: string) {
-    const { data } = await db.from('items').select('file_path').eq('id', itemId).single();
-    if (data?.file_path) await db.storage.from('materials').remove([data.file_path]);
+    const { data } = await db.from('items').select('file_path, attachments').eq('id', itemId).single();
+    const extra = ((data?.attachments as { path: string }[] | null) || []).map((x) => x.path);
+    const paths = [data?.file_path, ...extra].filter(Boolean) as string[];
+    const safe: string[] = []; // skip any path another item also points to
+    for (const p of paths) {
+      const a = await db.from('items').select('id', { count: 'exact', head: true }).neq('id', itemId).eq('file_path', p);
+      const b = await db.from('items').select('id', { count: 'exact', head: true }).neq('id', itemId).contains('attachments', [{ path: p }]);
+      if (!a.count && !b.count) safe.push(p);
+    }
+    if (safe.length) await db.storage.from('materials').remove(safe);
   }
 
   switch (body.action) {

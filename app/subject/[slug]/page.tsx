@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { COURSES, getCourse, TRACK_LABEL } from '@/lib/courses';
 import type { Track } from '@/lib/types';
 import SubjectView from '@/components/SubjectView';
+import Assessment from '@/components/Assessment';
 import { BookOpen, FlaskConical } from 'lucide-react';
 
 export const generateStaticParams = () => COURSES.map((c) => ({ slug: c.slug }));
@@ -48,6 +49,7 @@ export default function SubjectPage({ params, searchParams }:
               ))}
             </div>
           )}
+          {track !== 'lab' && <Assessment slug={course.slug} />}
           <SubjectView slug={course.slug} track={track} />
         </>
       )}

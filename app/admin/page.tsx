@@ -135,6 +135,13 @@ export default function AdminPage() {
           {pending.map((i) => (
             <div key={i.id} className="rounded-xl border border-line bg-panel p-3">
               {titleLink(i, 'font-semibold')}
+              {(i.attachments || []).length > 0 && (
+                <span className="ms-2 text-xs text-muted">
+                  {(i.attachments || []).map((a, n) => (
+                    <a key={a.path} href={fileUrl(a.path)} target="_blank" rel="noopener noreferrer" className="me-2 text-brand underline">ملف {n + 2}</a>
+                  ))}
+                </span>
+              )}
               <p className="mt-0.5 text-xs text-muted">
                 {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{CATEGORY_AR[i.category]}
                 {i.uploader_name && ` – من ${i.uploader_name}`}
