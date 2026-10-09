@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       const approved = await db.from('items')
         .select('id, title, subject_slug, track, category, file_path, external_url, created_at, exam_pick, description, file_kind')
         .eq('status', 'approved').order('created_at', { ascending: true }).limit(500);
-      return NextResponse.json({ pending: pending.data || [], reports: reports.data || [], approved: approved.data || [] });
+      return NextResponse.json({ pending: pending.data || [], reports: reports.data || [], approved: approved.data || [], previewOnly: process.env.VERCEL_ENV !== 'production' });
     }
     case 'approve': {
       const badges = (Array.isArray(body.badges) ? body.badges : []).filter((b: string) => BADGES.includes(b));

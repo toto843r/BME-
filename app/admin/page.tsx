@@ -30,6 +30,7 @@ export default function AdminPage() {
   const [mCat, setMCat] = useState('lectures');
   const [mDesc, setMDesc] = useState('');
   const [err, setErr] = useState('');
+  const [previewOnly, setPreviewOnly] = useState(false);
   const [oldQuizBusy, setOldQuizBusy] = useState(false);
   const [oldQuizMessage, setOldQuizMessage] = useState('');
 
@@ -53,7 +54,7 @@ export default function AdminPage() {
   async function load() {
     const { ok, j } = await call('list');
     if (!ok) { setErr(j.error || 'خطأ'); setAuthed(false); return; }
-    setErr(''); setAuthed(true); setPending(j.pending); setReports(j.reports); setApproved(j.approved || []);
+    setErr(''); setAuthed(true); setPending(j.pending); setReports(j.reports); setApproved(j.approved || []); setPreviewOnly(Boolean(j.previewOnly));
   }
   async function act(action: string, id: string, extra: object = {}) {
     const { ok, j } = await call(action, { id, ...extra });
@@ -150,7 +151,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold">لوحة المشرف</h1>
       {err && <p className="rounded-lg border border-now p-3 text-sm">{err}</p>}
 
-      <section className="rounded-xl border border-line bg-panel p-4 space-y-2">
+      {previewOnly && <section className="rounded-xl border border-line bg-panel p-4 space-y-2">
         <h2 className="font-bold">تجربة تجهيز الملازم القديمة</h2>
         <p className="text-sm text-muted">في النسخة التجريبية فقط: جهّز أسئلة ملزمة قديمة واحدة بدون إعادة رفعها. الأسئلة المحفوظة لا تتكرر، ولا تتغير بيانات الملازم.</p>
         <button type="button" disabled={oldQuizBusy} onClick={prepareOldQuiz}
@@ -158,7 +159,7 @@ export default function AdminPage() {
           {oldQuizBusy ? 'جارٍ التجهيز...' : 'تجهيز أسئلة ملزمة قديمة واحدة'}
         </button>
         {oldQuizMessage && <p role="status" className="text-sm text-muted">{oldQuizMessage}</p>}
-      </section>
+      </section>}
 
       <section>
         <h2 className="mb-3 text-lg font-bold">بانتظار المراجعة ({pending.length})</h2>

@@ -21,12 +21,13 @@ async function validLecture(id: string, file: string) {
   return files.some((f) => f.path === file && f.kind === 'pdf');
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const file = new URL(request.url).searchParams.get('file') || '';
-    if (!(await validLecture(params.id, file))) return response({ error: 'هذه الملزمة غير متاحة.' }, 404);
+    if (!(await validLecture(id, file))) return response({ error: 'هذه الملزمة غير متاحة.' }, 404);
     const { data, error } = await supabaseAdmin().from('quiz_banks')
-      .select('status,questions,updated_at').eq('item_id', params.id).eq('file_path', file).maybeSingle();
+      .select('status,questions,updated_at').eq('item_id', id).eq('file_path', file).maybeSingle();
     if (error) return response({ status: 'unconfigured', error: 'لم يُضبط بنك الأسئلة.' }, 503);
     const elapsed = Date.now() - new Date(data?.updated_at || 0).getTime();
     const retryable = (data?.status === 'generating' && elapsed > 10 * 60_000) ||

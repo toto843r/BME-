@@ -8,12 +8,14 @@ import { BookOpen, FlaskConical } from 'lucide-react';
 
 export const generateStaticParams = () => COURSES.map((c) => ({ slug: c.slug }));
 
-export default function SubjectPage({ params, searchParams }:
-  { params: { slug: string }; searchParams: { track?: string } }) {
-  const course = getCourse(params.slug);
+export default async function SubjectPage({ params, searchParams }:
+  { params: Promise<{ slug: string }>; searchParams: Promise<{ track?: string }> }) {
+  const { slug } = await params;
+  const { track: requestedTrack } = await searchParams;
+  const course = getCourse(slug);
   if (!course) notFound();
 
-  const wanted = searchParams.track;
+  const wanted = requestedTrack;
   const track: Track | null = course.split
     ? (wanted === 'theory' || wanted === 'lab' ? wanted : null)
     : 'main';
