@@ -1,25 +1,28 @@
-import Link from 'next/link';
-import { COURSES } from '@/lib/courses';
-import Schedule from '@/components/Schedule';
-import OmniSearch from '@/components/OmniSearch';
+import type { Metadata } from 'next';
+import SharedFile from '@/components/SharedFile';
+import { getCourse } from '@/lib/courses';
 
-export default function Home() {
-  return (
-    <div className="space-y-8">
-      <Schedule />
-      <OmniSearch />
-      <section aria-label="المواد">
-        <h2 className="mb-3 text-xl font-bold">المواد</h2>
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          {COURSES.map((c) => (
-            <Link key={c.slug} href={`/subject/${c.slug}`} className="rounded-xl border border-line bg-panel p-4 hover:border-brand">
-              <span className="block font-bold">{c.ar}</span>
-              <span className="block text-sm text-muted" dir="ltr">{c.en}</span>
-              <span className="mt-1 block text-xs text-muted">{c.split ? 'نظري + مختبر' : 'نظري'}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
+const UUID = /^[0-9a-f-]{36}$/i;
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const fallback = { title: 'بوابة الهندسة الطبية – المرحلة الرابعة' };
+  if (!UUID.test(params.id)) return fallback;
+  try {
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/items?id=eq.${params.id}&status=eq.approved&select=title,subject_slug&limit=1`;
+    const res = await fetch(url, { headers: { apikey: key, Authorization:/SharedFile';
+imp}, cache: 'no-store' });
+    const [it] = await res.json();
+    if (!it) return fallback;
+    const title =} from '@/lib/courses';
+
+const UUID = /^[0-9a-f-]{36}$/i;
+    return { title, openGraph: { title, description: 'بوابة الهندسة الطبية – المرحلة الرابعة', type: 'website' } };
+  } catch {
+    return fallback;
+  }
+}
+
+export default function Page({ params }: { params: { id: string } }) {
+  return <SharedFile id={params.id} />;
 }
