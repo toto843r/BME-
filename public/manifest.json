@@ -1,17 +1,11 @@
 {
-  "name": "بوابة الهندسة الطبية – المرحلة الرابعة",
-  "short_name": "BME ٤",
-  "description": "ملازم وامتحانات وملخصات المرحلة الرابعة",
-  "lang": "ar",
-  "dir": "rtl",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "background_color": "#F2F6F6",
-  "theme_color": "#0E6F73",
+  "name": "بوابة الهندسة الطبية الحياتية",
+  "short_name": "BME Portal",
+  "description": "بوابة طلابية للمواد الدراسية والملازم وجدول المحاضرات والقاعات والاختبارات",
+  "lang": "ar", "dir": "rtl", "start_url": "/", "scope": "/",
+  "display": "standalone", "background_color": "#F2F6F6", "theme_color": "#0E6F73",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
   ]
 }

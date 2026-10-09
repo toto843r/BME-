@@ -1,5 +1,7 @@
 'use client';
-import { Eye, FileText, Flag, PlayCircle, Share2, Star } from 'lucide-react';
+import { BrainCircuit, Eye, FileText, Flag, PlayCircle, Share2, Star } from 'lucide-react';
+import Link from 'next/link';
+import { itemFiles } from '@/lib/recent';
 import type { Item } from '@/lib/types';
 import { BADGES } from '@/lib/courses';
 import { supabase } from '@/lib/supabase';
@@ -26,9 +28,12 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
     }
   }
   const badges = BADGES.filter((b) => item.badges.includes(b.key));
-  const nFiles = (item.attachments?.length ?? 0) + (item.file_path ? 1 : 0);
+  const files = itemFiles(item);
+  const nFiles = files.length;
+  const pdfs = item.category === 'lectures' ? files.filter((f) => f.kind === 'pdf') : [];
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-line bg-panel p-3">
+    <div className="rounded-xl border border-line bg-panel p-3 transition-colors hover:border-brand/50">
+      <div className="flex items-start gap-2">
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 text-start">
         <span className="mt-0.5 text-brand">{item.file_kind === 'video' ? <PlayCircle size={22} /> : item.file_kind === 'text' ? <FileText size={22} /> : <Eye size={22} />}</span>
         <span className="min-w-0 flex-1">
@@ -49,6 +54,13 @@ export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
       </button>
       <button onClick={share} aria-label="مشاركة الملف" className="p-1.5 text-muted hover:text-ink"><Share2 size={17} /></button>
       <button onClick={report} aria-label="الإبلاغ عن مشكلة" className="p-1.5 text-muted hover:text-ink"><Flag size={17} /></button>
+      </div>
+      {pdfs.length > 0 && <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
+        {pdfs.map((f) => <Link key={f.path} href={`/quiz/${item.id}?file=${encodeURIComponent(f.path)}`}
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-lg border border-brand/50 bg-brand/10 px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/20">
+          <BrainCircuit size={16} /> <span className="max-w-48 truncate">اختبر نفسك{pdfs.length > 1 ? ` · ${f.name || f.path.split('/').pop()}` : ''}</span>
+        </Link>)}
+      </div>}
     </div>
   );
 }

@@ -8,7 +8,10 @@ export default function PwaBits() {
   const [hidden, setHidden] = useState(true);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if ('serviceWorker' in navigator) {
+      if (process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => {});
+      else { navigator.serviceWorker.getRegistrations().then((list) => list.forEach((sw) => sw.unregister())).catch(() => {}); }
+    }
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
     if (standalone || localStorage.getItem('bme-install-dismissed')) return;
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);

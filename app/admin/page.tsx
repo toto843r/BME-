@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowLeftRight, Check, Trash2, X, Zap } from 'lucide-react';
-import { BADGES, CATEGORIES, categoriesFor, CATEGORY_AR, COURSES, getCourse } from '@/lib/courses';
+import { BADGES, categoriesFor, CATEGORY_AR, COURSES, getCourse } from '@/lib/courses';
 import { fileUrl } from '@/lib/supabase';
 import type { Item, Track } from '@/lib/types';
 
@@ -30,19 +30,39 @@ export default function AdminPage() {
   const [mCat, setMCat] = useState('lectures');
   const [mDesc, setMDesc] = useState('');
   const [err, setErr] = useState('');
+  const [previewOnly, setPreviewOnly] = useState(false);
+  const [oldQuizBusy, setOldQuizBusy] = useState(false);
+  const [oldQuizMessage, setOldQuizMessage] = useState('');
 
   async function call(action: string, extra: object = {}) {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin, action, ...extra }) });
     return { ok: r.ok, j: await r.json() };
   }
+  async function prepareOldQuiz() {
+    if (oldQuizBusy) return;
+    setOldQuizBusy(true);
+    setOldQuizMessage('جارٍ تجهيز ملزمة واحدة؛ قد يستغرق ذلك دقيقة...');
+    try {
+      const { ok, j } = await call('prepare_old_quiz');
+      setOldQuizMessage(j.message || j.error || (ok ? 'اكتملت المحاولة.' : 'تعذرت العملية.'));
+    } catch {
+      setOldQuizMessage('تعذر الاتصال بالخادم؛ لا تعِد المحاولة مباشرة إذا كانت العملية مستمرة.');
+    } finally {
+      setOldQuizBusy(false);
+    }
+  }
   async function load() {
     const { ok, j } = await call('list');
     if (!ok) { setErr(j.error || 'خطأ'); setAuthed(false); return; }
-    setErr(''); setAuthed(true); setPending(j.pending); setReports(j.reports); setApproved(j.approved || []);
+    setErr(''); setAuthed(true); setPending(j.pending); setReports(j.reports); setApproved(j.approved || []); setPreviewOnly(Boolean(j.previewOnly));
   }
   async function act(action: string, id: string, extra: object = {}) {
     const { ok, j } = await call(action, { id, ...extra });
-    if (!ok || j.error) setErr(j.error || 'فشلت العملية'); else { setErr(''); load(); }
+    if (!ok || j.error) setErr(j.error || 'فشلت العملية'); else {
+      setErr('');
+      // Approval publishes the material; quiz preparation starts on upload.
+      load();
+    }
   }
   const toggleBadge = (id: string, b: string) =>
     setPicked((p) => ({ ...p, [id]: (p[id] || []).includes(b) ? p[id].filter((x) => x !== b) : [...(p[id] || []), b] }));
@@ -50,19 +70,19 @@ export default function AdminPage() {
 
   function startMove(i: Pub) {
     if (moving === i.id) return setMoving(null);
-    setMoving(i.id); setMSlug(i.subject_slug); setMCat(i.category); setMDesc(i.description || '');
+    setMoving(i.id); setMSlug(i.subject_slug); setMCat(i.subject_slug === 'biomedical-sensors' && ['quizzes', 'midterms'].includes(i.category) ? 'exams_plus' : i.category); setMDesc(i.description || '');
     setMTrack(getCourse(i.subject_slug)?.split ? (i.track === 'lab' ? 'lab' : 'theory') : 'main');
   }
   // text posts -> quizzes/midterms/finals only; links -> videos only; files -> everything else
   const catOk = (i: Pub, key: string) =>
-    i.file_kind === 'text' ? ['quizzes', 'midterms', 'finals'].includes(key) : (key === 'videos') === !i.file_path;
-  const validCat = (t: string, cat: string, i: Pub) => {
-    const list = categoriesFor(t as Track).filter((c) => catOk(i, c.key));
+    i.file_kind === 'text' ? ['quizzes', 'midterms', 'finals', 'exams_plus'].includes(key) : (key === 'videos') === !i.file_path;
+  const validCat = (t: string, cat: string, i: Pub, slug = mSlug) => {
+    const list = categoriesFor(t as Track, slug).filter((c) => catOk(i, c.key));
     return list.some((c) => c.key === cat) ? cat : (list[0]?.key ?? cat);
   };
   function changeCourse(slug: string, i: Pub) {
     const t = getCourse(slug)?.split ? 'theory' : 'main';
-    setMSlug(slug); setMTrack(t); setMCat((c) => validCat(t, c, i));
+    setMSlug(slug); setMTrack(t); setMCat((c) => validCat(t, c, i, slug));
   }
   const titleLink = (i: { title: string; file_path: string | null; external_url: string | null }, cls: string) =>
     i.file_path || i.external_url
@@ -99,7 +119,7 @@ export default function AdminPage() {
             {trackOptions(mSlug).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <select className={sel} value={mCat} onChange={(e) => setMCat(e.target.value)}>
-            {categoriesFor(mTrack as Track).filter((c) => catOk(i, c.key)).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+            {categoriesFor(mTrack as Track, mSlug).filter((c) => catOk(i, c.key)).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
           </select>
           <textarea className={sel} rows={6} maxLength={5000} value={mDesc} onChange={(e) => setMDesc(e.target.value)} placeholder="وصف الملف (اختياري)" />
           <div className="flex gap-2">
@@ -131,6 +151,16 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold">لوحة المشرف</h1>
       {err && <p className="rounded-lg border border-now p-3 text-sm">{err}</p>}
 
+      {previewOnly && <section className="rounded-xl border border-line bg-panel p-4 space-y-2">
+        <h2 className="font-bold">تجربة تجهيز الملازم القديمة</h2>
+        <p className="text-sm text-muted">في النسخة التجريبية فقط: جهّز أسئلة ملزمة قديمة واحدة بدون إعادة رفعها. الأسئلة المحفوظة لا تتكرر، ولا تتغير بيانات الملازم.</p>
+        <button type="button" disabled={oldQuizBusy} onClick={prepareOldQuiz}
+          className="rounded-lg bg-brand px-4 py-2 font-semibold text-onbrand disabled:opacity-50">
+          {oldQuizBusy ? 'جارٍ التجهيز...' : 'تجهيز أسئلة ملزمة قديمة واحدة'}
+        </button>
+        {oldQuizMessage && <p role="status" className="text-sm text-muted">{oldQuizMessage}</p>}
+      </section>}
+
       <section>
         <h2 className="mb-3 text-lg font-bold">بانتظار المراجعة ({pending.length})</h2>
         {pending.length === 0 && <p className="text-sm text-muted">لا شيء بانتظار المراجعة.</p>}
@@ -146,7 +176,7 @@ export default function AdminPage() {
                 </span>
               )}
               <p className="mt-0.5 text-xs text-muted">
-                {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{CATEGORY_AR[i.category]}
+                {getCourse(i.subject_slug)?.ar} – {i.track === 'main' ? '' : i.track === 'lab' ? 'مختبر – ' : 'نظري – '}{i.subject_slug === 'biomedical-sensors' && ['quizzes','midterms'].includes(i.category) ? 'امتحانات+' : CATEGORY_AR[i.category]}
                 {i.uploader_name && ` – من ${i.uploader_name}`}
               </p>
               {i.description && <p className="mt-1.5 whitespace-pre-line text-sm">{i.description}</p>}
@@ -187,8 +217,8 @@ export default function AdminPage() {
                     return (
                       <div key={t} className="space-y-3">
                         {c.split && <h3 className="font-semibold text-brand">{t === 'lab' ? 'مختبر' : 'نظري'} ({tl.length})</h3>}
-                        {CATEGORIES.map((cat) => {
-                          const l = tl.filter((i) => i.category === cat.key);
+                        {categoriesFor(t as Track, c.slug).map((cat) => {
+                          const l = tl.filter((i) => cat.key === 'exams_plus' ? ['quizzes', 'midterms'].includes(i.category) : i.category === cat.key);
                           if (!l.length) return null;
                           return (
                             <div key={cat.key}>

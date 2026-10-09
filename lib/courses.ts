@@ -36,8 +36,20 @@ export const CATEGORIES: { key: Category; ar: string; en: string }[] = [
   { key: 'videos', ar: 'الشروحات', en: 'Video Tutorials & Links' },
 ];
 // Lab track: Reports instead of Videos. Theory / main tracks: Videos, no Reports.
-export const categoriesFor = (track: Track) =>
-  CATEGORIES.filter((c) => (track === 'lab' ? c.key !== 'videos' : c.key !== 'reports'));
+export type DisplayCategory = Category | 'exams_plus';
+export const categoriesFor = (track: Track, slug?: string): { key: DisplayCategory; ar: string; en: string }[] => {
+  const list = CATEGORIES.filter((c) => (track === 'lab' ? c.key !== 'videos' : c.key !== 'reports'));
+  if (slug !== 'biomedical-sensors') return list;
+  const display: { key: DisplayCategory; ar: string; en: string }[] = [];
+  for (const c of list) {
+    if (c.key === 'quizzes') display.push({ key: 'exams_plus', ar: 'امتحانات+', en: 'Exams+' });
+    else if (c.key !== 'midterms') display.push(c);
+  }
+  return display;
+};
+export const normalizeCategory = (category: DisplayCategory): Category =>
+  category === 'exams_plus' ? 'quizzes' : category;
+
 export const CATEGORY_AR = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.ar])) as Record<Category, string>;
 // Exam Crunch Mode keeps only these, in this order
 export const CRUNCH: Category[] = ['finals', 'midterms', 'quizzes', 'summaries'];

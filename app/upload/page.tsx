@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { BUCKET, supabase } from '@/lib/supabase';
-import { CATEGORIES, categoriesFor, COURSES, getCourse } from '@/lib/courses';
+import { CATEGORIES, categoriesFor, COURSES, getCourse, normalizeCategory, type DisplayCategory } from '@/lib/courses';
 import { EXT_MIME, kindFromExt } from '@/lib/media';
 import type { Category, Track } from '@/lib/types';
 
@@ -14,7 +14,7 @@ const field = 'w-full rounded-lg border border-line bg-panel px-3 py-2.5 outline
 export default function UploadPage() {
   const [slug, setSlug] = useState(COURSES[0].slug);
   const [track, setTrack] = useState<Track>('theory');
-  const [category, setCategory] = useState<Category>('lectures');
+  const [category, setCategory] = useState<DisplayCategory>('lectures');
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [tags, setTags] = useState('');
@@ -29,17 +29,17 @@ export default function UploadPage() {
     const q = new URLSearchParams(window.location.search);
     const sl = q.get('slug'), c = q.get('category'), t = q.get('track');
     if (sl && getCourse(sl)) setSlug(sl);
-    if (c && CATEGORIES.some((x) => x.key === c)) setCategory(c as Category);
+    if (c && (CATEGORIES.some((x) => x.key === c) || c === 'exams_plus')) setCategory(c as DisplayCategory);
     if (t === 'theory' || t === 'lab') setTrack(t);
   }, []);
 
   const course = getCourse(slug)!;
   const isVideo = category === 'videos';
-  const hasDesc = ['quizzes', 'midterms', 'finals'].includes(category);
+  const hasDesc = ['quizzes', 'midterms', 'finals', 'exams_plus'].includes(category);
   const effTrack: Track = course.split ? (track === 'main' ? 'theory' : track) : 'main';
 
   useEffect(() => {
-    if (!categoriesFor(effTrack).some((c) => c.key === category)) setCategory('lectures');
+    if (!categoriesFor(effTrack, slug).some((c) => c.key === category)) setCategory('lectures');
   }, [effTrack, category]);
 
   function addFiles(list: FileList | null) {
@@ -82,8 +82,10 @@ export default function UploadPage() {
         if (uploaded.length !== files.length) throw new Error('لم تكتمل رفع كل الملفات، حاول مرة ثانية.');
       }
       setProgress('جارٍ الحفظ…');
+      // Generate a client-side id because pending rows are not selectable by anonymous users.
+      const itemId = crypto.randomUUID();
       const { error } = await supabase.from('items').insert({
-        subject_slug: slug, track: effTrack, category, title: title.trim(),
+        id: itemId, subject_slug: slug, track: effTrack, category: normalizeCategory(category), title: title.trim(),
         tags: tags.split(/[,،]/).map((t) => t.trim()).filter(Boolean).slice(0, 8),
         file_path: uploaded[0]?.path ?? null,
         file_kind: isVideo ? 'video' : uploaded[0]?.kind ?? 'text',
@@ -93,7 +95,21 @@ export default function UploadPage() {
         description: hasDesc ? desc.trim().slice(0, 5000) || null : null,
       });
       if (error) throw error;
-      setMsg({ ok: true, text: 'وصل وهو بانتظار مراجعة المشرف. سيظهر بعد الموافقة.' });
+      // Fire-and-forget after the database insert: the user never waits for Gemini.
+      // The server verifies the new pending lecture and its PDF paths. A daily
+      // production reconciliation job picks up anything interrupted.
+      if (category === 'lectures' && uploaded.some((entry) => entry.kind === 'pdf')) {
+        void fetch('/api/quiz/queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId }),
+          cache: 'no-store',
+          // Keep the small trigger request alive if the student leaves the page.
+          // The PDF is NOT uploaded twice and no quiz data is sent from the browser.
+          keepalive: true,
+        }).catch(() => { /* Scheduled reconciliation retries in Production. */ });
+      }
+      setMsg({ ok: true, text: 'تم الرفع بنجاح وهو بانتظار مراجعة المشرف للنشر. تُجهّز أسئلة PDF تلقائياً بالخلفية.' });
       setTitle(''); setDesc(''); setTags(''); setUrl(''); setFiles([]);
     } catch (err: any) {
       setMsg({ ok: false, text: `فشل الرفع: ${err?.message || 'خطأ غير معروف'}` });
@@ -120,7 +136,7 @@ export default function UploadPage() {
 
       <label className="block"><span className="mb-1 block text-sm">القسم</span>
         <select className={field} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-          {categoriesFor(effTrack).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
+          {categoriesFor(effTrack, slug).map((c) => <option key={c.key} value={c.key}>{c.ar}</option>)}
         </select></label>
       <p className="-mt-2 text-xs text-muted">
         {isVideo ? 'قسم الشروحات روابط فقط، ولا يقبل رفع ملفات.' : 'هذا القسم ملفات فقط. الروابط تُضاف في قسم الشروحات.'}
