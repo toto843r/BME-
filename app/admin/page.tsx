@@ -30,10 +30,25 @@ export default function AdminPage() {
   const [mCat, setMCat] = useState('lectures');
   const [mDesc, setMDesc] = useState('');
   const [err, setErr] = useState('');
+  const [oldQuizBusy, setOldQuizBusy] = useState(false);
+  const [oldQuizMessage, setOldQuizMessage] = useState('');
 
   async function call(action: string, extra: object = {}) {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin, action, ...extra }) });
     return { ok: r.ok, j: await r.json() };
+  }
+  async function prepareOldQuiz() {
+    if (oldQuizBusy) return;
+    setOldQuizBusy(true);
+    setOldQuizMessage('جارٍ تجهيز ملزمة واحدة؛ قد يستغرق ذلك دقيقة...');
+    try {
+      const { ok, j } = await call('prepare_old_quiz');
+      setOldQuizMessage(j.message || j.error || (ok ? 'اكتملت المحاولة.' : 'تعذرت العملية.'));
+    } catch {
+      setOldQuizMessage('تعذر الاتصال بالخادم؛ لا تعِد المحاولة مباشرة إذا كانت العملية مستمرة.');
+    } finally {
+      setOldQuizBusy(false);
+    }
   }
   async function load() {
     const { ok, j } = await call('list');
@@ -134,6 +149,16 @@ export default function AdminPage() {
       <Link href="/" className="inline-block text-sm text-muted hover:text-ink">← الرئيسية</Link>
         <h1 className="text-2xl font-bold">لوحة المشرف</h1>
       {err && <p className="rounded-lg border border-now p-3 text-sm">{err}</p>}
+
+      <section className="rounded-xl border border-line bg-panel p-4 space-y-2">
+        <h2 className="font-bold">تجربة تجهيز الملازم القديمة</h2>
+        <p className="text-sm text-muted">في النسخة التجريبية فقط: جهّز أسئلة ملزمة قديمة واحدة بدون إعادة رفعها. الأسئلة المحفوظة لا تتكرر، ولا تتغير بيانات الملازم.</p>
+        <button type="button" disabled={oldQuizBusy} onClick={prepareOldQuiz}
+          className="rounded-lg bg-brand px-4 py-2 font-semibold text-onbrand disabled:opacity-50">
+          {oldQuizBusy ? 'جارٍ التجهيز...' : 'تجهيز أسئلة ملزمة قديمة واحدة'}
+        </button>
+        {oldQuizMessage && <p role="status" className="text-sm text-muted">{oldQuizMessage}</p>}
+      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-bold">بانتظار المراجعة ({pending.length})</h2>
