@@ -21,8 +21,6 @@ export const COURSES: Course[] = [
     instructors: { main: 'Dr. Waleed' } },
   { slug: 'dynamics-of-human', ar: 'ديناميكا جسم الإنسان', en: 'Dynamics of Human', split: false,
     instructors: { main: 'Prof. Dr. Hussam' } },
-  { slug: 'engineering-analysis', ar: 'التحليل الهندسي', en: 'Engineering Analysis', split: false,
-    instructors: { main: 'Assist. Prof. Dr. Nebras & A.L. Haider' } },
 ];
 
 export const getCourse = (slug: string) => COURSES.find((c) => c.slug === slug);
