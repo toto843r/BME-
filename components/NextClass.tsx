@@ -16,28 +16,71 @@ function fmt(total: number) {
 
 const hrefOf = (slug: string, track: string) => `/subject/${slug}${track !== 'main' ? `?track=${track}` : ''}`;
 
-export default function NextClass() {
-  const [now, setNow] = useState<Date | null>(null);
-  const [group, setGroup] = useState<'A' | 'B'>('A');
+// College schedules use Baghdad time even when a student travels abroad.
+// Convert the same server-supplied timestamp on the server and client, so
+// the first rendered HTML matches hydration exactly.
+const baghdadClock = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Baghdad',
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+const weekdayNumber: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+function clockAt(instant: number): { today: number; cur: number } {
+  const parts = baghdadClock.formatToParts(new Date(instant));
+  const get = (name: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === name)?.value ?? '';
+  return {
+    today: weekdayNumber[get('weekday')] ?? 0,
+    cur: Number(get('hour')) * 60 + Number(get('minute')),
+  };
+}
+
+type Group = 'A' | 'B';
+
+export default function NextClass({ initialNow, initialGroup }: { initialNow: string; initialGroup: Group }) {
+  // Do not wait for useEffect to show the schedule: the server can render
+  // the upcoming class immediately, improving the reported text LCP delay.
+  const [now, setNow] = useState(() => Date.parse(initialNow));
+  const [group, setGroup] = useState<Group>(initialGroup);
   const [open, setOpen] = useState<number[]>([]);
 
   useEffect(() => {
     try {
       const g = localStorage.getItem('bme-group');
-      if (g === 'A' || g === 'B') setGroup(g);
+      if (g === 'A' || g === 'B') {
+        setGroup(g);
+        // Migrate an existing preference to the SSR cookie on first visit.
+        document.cookie = `bme-group=${g}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      }
     } catch { /* Storage can be blocked in private browsing */ }
-    setNow(new Date());
-    const t = setInterval(() => setNow(new Date()), 30000);
-    return () => clearInterval(t);
+    // Refresh after hydration and when the tab becomes active again.
+    // Keep only one interval and stop updating a hidden tab.
+    const update = () => {
+      if (!document.hidden) setNow(Date.now());
+    };
+    update();
+    const t = window.setInterval(update, 30000);
+    document.addEventListener('visibilitychange', update);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', update);
+    };
   }, []);
 
-  const pickGroup = (g: 'A' | 'B') => { setGroup(g); try { localStorage.setItem('bme-group', g); } catch {} };
+  const pickGroup = (g: Group) => {
+    setGroup(g);
+    try { localStorage.setItem('bme-group', g); } catch {}
+    // Makes the preferred group available to the next server render.
+    try { document.cookie = `bme-group=${g}; Path=/; Max-Age=31536000; SameSite=Lax`; } catch {}
+  };
   const toggleDay = (d: number) => setOpen((o) => (o.includes(d) ? o.filter((x) => x !== d) : [...o, d]));
 
-  if (!now) return null;
   const mine = SCHEDULE.filter((s) => s.group === group);
-  const today = now.getDay();
-  const cur = now.getHours() * 60 + now.getMinutes();
+  const { today, cur } = clockAt(now);
 
   // ---- next / live lecture
   const live = mine.find((s) => s.day === today && mins(s.start) <= cur && cur < mins(s.end));

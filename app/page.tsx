@@ -1,12 +1,21 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { COURSES } from '@/lib/courses';
 import NextClass from '@/components/NextClass';
 import OmniSearch from '@/components/OmniSearch';
 
-export default function Home() {
+// The clock in the upcoming-lecture card must be fresh on every visit.
+// Render it on the server rather than waiting for client hydration.
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const cookieStore = await cookies();
+  const savedGroup = cookieStore.get('bme-group')?.value;
+  const initialGroup: 'A' | 'B' = savedGroup === 'B' ? 'B' : 'A';
+  const initialNow = new Date().toISOString();
   return (
     <div className="space-y-8">
-      <NextClass />
+      <NextClass initialNow={initialNow} initialGroup={initialGroup} />
       <Link href="/schedule" className="inline-flex rounded-lg border border-line bg-panel px-4 py-2 text-sm font-semibold text-brand hover:border-brand">الجدول الكامل والقاعات ←</Link>
       <OmniSearch />
       <section aria-label="المواد">

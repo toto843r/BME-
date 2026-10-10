@@ -1,75 +1,113 @@
 'use client';
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import type { Item } from '@/lib/types';
 import { CATEGORY_AR, getCourse, TRACK_LABEL } from '@/lib/courses';
 import { useBookmarks } from '@/lib/useBookmarks';
 import ItemCard from './ItemCard';
-import PreviewModal from './PreviewModal';
+
+// The PDF/document preview code loads only when the user opens a result.
+const PreviewModal = dynamic(() => import('./PreviewModal'), { ssr: false });
+
+type CachedResult = { items: Item[]; at: number };
 
 export default function OmniSearch() {
+  const [q, setQ] = useState('');
   const [items, setItems] = useState<Item[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [resultQuery, setResultQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [q, setQ] = useState('');
   const [open, setOpen] = useState<Item | null>(null);
+  const recentQueries = useRef(new Map<string, CachedResult>());
   const { ids, toggle } = useBookmarks();
 
-  // The search index can contain thousands of lectures. Do not download it
-  // before the student even uses the search box (especially on mobile data).
-  const searching = q.trim().length >= 2;
+  const query = q.trim();
+  const searching = query.length >= 2;
+
   useEffect(() => {
-    if (!searching || loaded) return;
-    let cancelled = false;
+    if (query.length < 2) {
+      setItems([]);
+      setResultQuery('');
+      setLoading(false);
+      setLoadFailed(false);
+      return;
+    }
+
+    const controller = new AbortController();
     setLoading(true);
     setLoadFailed(false);
-    supabase.from('items')
-      .select('id,subject_slug,track,category,title,tags,badges,file_path,file_kind,attachments,external_url,uploader_name,status,exam_pick,description,created_at')
-      .eq('status', 'approved').order('created_at', { ascending: true }).limit(2000)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        setLoading(false);
-        if (!error) { setItems((data as Item[]) || []); setLoaded(true); }
-        else setLoadFailed(true);
-      });
-    return () => { cancelled = true; };
-  }, [searching, loaded]);
 
-  const results = useMemo(() => {
-    const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (q.trim().length < 2) return [];
-    return items.filter((i) => {
-      const c = getCourse(i.subject_slug);
-      const hay = [i.title, i.description, ...i.tags, c?.ar, c?.en, c?.instructors[i.track], CATEGORY_AR[i.category], TRACK_LABEL[i.track]]
-        .filter(Boolean).join(' ').toLowerCase();
-      return tokens.every((t) => hay.includes(t));
-    }).slice(0, 40);
-  }, [q, items]);
+    // A short delay avoids a network request on every keystroke.
+    const timer = window.setTimeout(async () => {
+      const cached = recentQueries.current.get(query);
+      if (cached && Date.now() - cached.at < 60_000) {
+        setItems(cached.items);
+        setResultQuery(query);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        if (!response.ok) throw new Error('Search request failed');
+        const data = await response.json() as { items?: Item[] };
+        if (!Array.isArray(data.items)) throw new Error('Invalid search results');
+        if (controller.signal.aborted) return;
+        setItems(data.items);
+        setResultQuery(query);
+        setLoading(false);
+        recentQueries.current.set(query, { items: data.items, at: Date.now() });
+        // Keep only eight recent searches in memory, not a full lecture index.
+        if (recentQueries.current.size > 8) {
+          const oldest = recentQueries.current.keys().next().value;
+          if (oldest) recentQueries.current.delete(oldest);
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+        setItems([]);
+        setResultQuery(query);
+        setLoading(false);
+        setLoadFailed(true);
+      }
+    }, 320);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+
+  // Do not display old-query results while another request is in flight.
+  const visible = resultQuery === query ? items : [];
 
   return (
     <section aria-label="بحث شامل">
       <div className="relative">
         <Search size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted" />
         <input value={q} onChange={(e) => setQ(e.target.value)} type="search"
+          maxLength={100}
           placeholder="ابحث بالعنوان أو المدرس أو الوسم أو الموضوع…"
           className="w-full rounded-xl border border-line bg-panel py-3 pe-3 ps-10 outline-none focus:border-brand" />
       </div>
       {searching && (
-        <div className="mt-3 space-y-2">
-          {loading && <p className="text-sm text-muted" role="status">جارٍ تحميل فهرس البحث لأول مرة…</p>}
-          {!loading && loaded && results.length === 0 && <p className="text-sm text-muted">لا نتائج. جرّب كلمة أقصر أو اسم المادة.</p>}
-          {loadFailed && <p className="text-sm text-muted">تعذّر تحميل البحث. تحقق من اتصالك وحاول إعادة فتح الصفحة.</p>}
-          {results.map((i) => {
-            const c = getCourse(i.subject_slug);
-            const sub = `${c?.ar ?? ''}${i.track !== 'main' ? ` – ${TRACK_LABEL[i.track]}` : ''} – ${CATEGORY_AR[i.category]}`;
-            return <ItemCard key={i.id} item={i} subtitle={sub} starred={ids.includes(i.id)} onStar={() => toggle(i.id)} onOpen={() => setOpen(i)} />;
+        <div className="mt-3 space-y-2" aria-live="polite">
+          {loading && <p className="text-sm text-muted" role="status">جارٍ البحث…</p>}
+          {!loading && !loadFailed && visible.length === 0 && <p className="text-sm text-muted">لا نتائج. جرّب كلمة أقصر أو اسم المادة.</p>}
+          {loadFailed && <p className="text-sm text-muted" role="alert">تعذّر البحث. تأكد من اتصالك ثم حاول مرة أخرى.</p>}
+          {!loading && !loadFailed && visible.map((item) => {
+            const course = getCourse(item.subject_slug);
+            const subtitle = `${course?.ar ?? ''}${item.track !== 'main' ? ` – ${TRACK_LABEL[item.track]}` : ''} – ${CATEGORY_AR[item.category]}`;
+            return <ItemCard key={item.id} item={item} subtitle={subtitle} starred={ids.includes(item.id)} onStar={() => toggle(item.id)} onOpen={() => setOpen(item)} />;
           })}
         </div>
       )}
-      <PreviewModal item={open} onClose={() => setOpen(null)} />
+      {open && <PreviewModal item={open} onClose={() => setOpen(null)} />}
     </section>
   );
 }
