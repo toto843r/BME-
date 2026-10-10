@@ -1,15 +1,18 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowLeftRight, Check, Trash2, X, Zap } from 'lucide-react';
+import { ArrowLeftRight, Check, Trash2, X, Zap, Pencil, ChevronDown, Upload, Megaphone } from 'lucide-react';
+import UploadForm from '@/components/UploadForm';
 import { BADGES, categoriesFor, CATEGORY_AR, COURSES, getCourse } from '@/lib/courses';
 import { fileUrl } from '@/lib/supabase';
 import type { Item, Track } from '@/lib/types';
 
+interface Notice { id: string; message: string; expires_at: string }
 interface Report { id: string; reason: string | null; items: any }
 interface Pub {
   id: string; title: string; subject_slug: string; track: string; category: string;
   file_path: string | null; external_url: string | null; exam_pick?: boolean; description?: string | null; file_kind?: string;
+  attachments?: {path: string;kind: string;name?: string}[];
 }
 
 const sel = 'w-full rounded-lg border border-line bg-bg px-2 py-2 text-sm';
@@ -25,6 +28,10 @@ export default function AdminPage() {
   const [picked, setPicked] = useState<Record<string, string[]>>({});
   const [filter, setFilter] = useState('');
   const [moving, setMoving] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [attachmentNames, setAttachmentNames] = useState<Record<string, string>>({});
+  const [editMenu, setEditMenu] = useState<string | null>(null);
   const [mSlug, setMSlug] = useState('');
   const [mTrack, setMTrack] = useState('theory');
   const [mCat, setMCat] = useState('lectures');
@@ -33,10 +40,39 @@ export default function AdminPage() {
   const [previewOnly, setPreviewOnly] = useState(false);
   const [oldQuizBusy, setOldQuizBusy] = useState(false);
   const [oldQuizMessage, setOldQuizMessage] = useState('');
+  const [noticeText, setNoticeText] = useState('');
+  const [activeNotice, setActiveNotice] = useState<Notice | null>(null);
+  const [noticeBusy, setNoticeBusy] = useState(false);
+  const [noticeFeedback, setNoticeFeedback] = useState('');
 
   async function call(action: string, extra: object = {}) {
     const r = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin, action, ...extra }) });
     return { ok: r.ok, j: await r.json() };
+  }
+  async function publishNotice(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const message = noticeText.trim();
+    if (noticeBusy || !message || message.length > 400) return;
+    setNoticeBusy(true); setNoticeFeedback('');
+    try {
+      const { ok, j } = await call('publish_notice', { message });
+      if (!ok) { setNoticeFeedback(j.error || 'تعذر إرسال التبليغ.'); return; }
+      setActiveNotice(j.notice);
+      setNoticeText('');
+      setNoticeFeedback('تم نشر التبليغ بنجاح لمدة 4 ساعات.');
+    } catch { setNoticeFeedback('تعذر الاتصال بالخادم. حاول بعد قليل.'); }
+    finally { setNoticeBusy(false); }
+  }
+  async function clearNotice() {
+    if (noticeBusy || !window.confirm('مسح التبليغ الحالي فوراً؟')) return;
+    setNoticeBusy(true); setNoticeFeedback('');
+    try {
+      const { ok, j } = await call('clear_notice');
+      if (!ok) { setNoticeFeedback(j.error || 'تعذر مسح التبليغ.'); return; }
+      setActiveNotice(null);
+      setNoticeFeedback('تم مسح التبليغ.');
+    } catch { setNoticeFeedback('تعذر الاتصال بالخادم. حاول بعد قليل.'); }
+    finally { setNoticeBusy(false); }
   }
   async function prepareOldQuiz() {
     if (oldQuizBusy) return;
@@ -54,21 +90,22 @@ export default function AdminPage() {
   async function load() {
     const { ok, j } = await call('list');
     if (!ok) { setErr(j.error || 'خطأ'); setAuthed(false); return; }
-    setErr(''); setAuthed(true); setPending(j.pending); setReports(j.reports); setApproved(j.approved || []); setPreviewOnly(Boolean(j.previewOnly));
+    setErr(''); setAuthed(true); setPending(j.pending); setReports(j.reports); setApproved(j.approved || []); setActiveNotice(j.notice || null); setPreviewOnly(Boolean(j.previewOnly));
   }
   async function act(action: string, id: string, extra: object = {}) {
     const { ok, j } = await call(action, { id, ...extra });
-    if (!ok || j.error) setErr(j.error || 'فشلت العملية'); else {
-      setErr('');
-      // Approval publishes the material; quiz preparation starts on upload.
-      load();
-    }
+    if (!ok || j.error) { setErr(j.error || 'فشلت العملية'); return false; }
+    setErr('');
+    // Approval publishes the material; quiz preparation starts on upload.
+    void load();
+    return true;
   }
   const toggleBadge = (id: string, b: string) =>
     setPicked((p) => ({ ...p, [id]: (p[id] || []).includes(b) ? p[id].filter((x) => x !== b) : [...(p[id] || []), b] }));
   const urlOf = (i: { file_path: string | null; external_url: string | null }) => (i.file_path ? fileUrl(i.file_path) : i.external_url || '#');
 
   function startMove(i: Pub) {
+    setEditMenu(null); setRenaming(null);
     if (moving === i.id) return setMoving(null);
     setMoving(i.id); setMSlug(i.subject_slug); setMCat(i.subject_slug === 'biomedical-sensors' && ['quizzes', 'midterms'].includes(i.category) ? 'exams_plus' : i.category); setMDesc(i.description || '');
     setMTrack(getCourse(i.subject_slug)?.split ? (i.track === 'lab' ? 'lab' : 'theory') : 'main');
@@ -103,13 +140,42 @@ export default function AdminPage() {
           className={`rounded-lg border p-2 ${i.exam_pick ? 'border-now bg-now text-[#10242B]' : 'border-line text-muted'}`}>
           <Zap size={16} />
         </button>
-        <button onClick={() => startMove(i)} aria-label="تعديل أو نقل" className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-sm">
-          <ArrowLeftRight size={15} /> تعديل
-        </button>
+        <div className="relative">
+          <button type="button" onClick={() => setEditMenu((m) => m === i.id ? null : i.id)}
+            aria-label="خيارات تعديل الملف" aria-expanded={editMenu === i.id}
+            className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-sm">
+            <Pencil size={15} /> تعديل <ChevronDown size={14} />
+          </button>
+          {editMenu === i.id && <div className="absolute end-0 top-full z-20 mt-1 min-w-40 space-y-1 rounded-xl border border-line bg-panel p-1.5 shadow-lg">
+            <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm hover:bg-line/60"
+              onClick={() => { setNewTitle(i.title); setAttachmentNames(Object.fromEntries((i.attachments || []).map((a) => [a.path, a.name || 'ملف إضافي']))); setRenaming(i.id); setMoving(null); setEditMenu(null); }}>
+              <Pencil size={15} /> تعديل الاسم
+            </button>
+            <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm hover:bg-line/60"
+              onClick={() => startMove(i)}>
+              <ArrowLeftRight size={15} /> نقل إلى قسم آخر
+            </button>
+          </div>}
+        </div>
         <button onClick={() => window.confirm('حذف هذا الملف نهائياً؟') && act('remove_item', i.id)} aria-label="حذف"
           className="rounded-lg border border-now p-2"><Trash2 size={16} /></button>
       </div>
       {i.description && moving !== i.id && <p className="mt-1.5 whitespace-pre-line text-xs text-muted">{i.description}</p>}
+      {renaming === i.id && (
+        <form className="mt-2 flex flex-wrap gap-2 border-t border-line pt-2"
+          onSubmit={async (e) => { e.preventDefault(); if (await act('rename_item', i.id, { title: newTitle, attachmentNames: (i.attachments || []).map((a) => ({ path: a.path, name: attachmentNames[a.path] || a.name || 'ملف إضافي' })) })) setRenaming(null); }}>
+          <label className="w-full text-xs text-muted">اسم الملف الرئيسي
+            <input required minLength={2} maxLength={200} value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+              aria-label="الاسم الجديد" className={`${sel} mt-1`} />
+          </label>
+          {(i.attachments || []).map((a, n) => <label key={a.path} className="w-full text-xs text-muted">اسم الملف الإضافي {n + 2}
+            <input required minLength={2} maxLength={200} value={attachmentNames[a.path] || ''}
+              onChange={(e) => setAttachmentNames((prev) => ({ ...prev, [a.path]: e.target.value }))} className={`${sel} mt-1`} />
+          </label>)}
+          <button type="submit" className="rounded-lg bg-brand px-3 py-2 text-sm text-onbrand">حفظ الأسماء</button>
+          <button type="button" onClick={() => setRenaming(null)} className="rounded-lg border border-line px-3 py-2 text-sm">إلغاء</button>
+        </form>
+      )}
       {moving === i.id && (
         <div className="mt-2.5 space-y-2 border-t border-line pt-2.5">
           <select className={sel} value={mSlug} onChange={(e) => changeCourse(e.target.value, i)}>
@@ -123,7 +189,7 @@ export default function AdminPage() {
           </select>
           <textarea className={sel} rows={6} maxLength={5000} value={mDesc} onChange={(e) => setMDesc(e.target.value)} placeholder="وصف الملف (اختياري)" />
           <div className="flex gap-2">
-            <button onClick={() => { act('move_item', i.id, { slug: mSlug, track: mTrack, category: mCat, description: mDesc }); setMoving(null); }}
+            <button onClick={async () => { if (await act('move_item', i.id, { slug: mSlug, track: mTrack, category: mCat, description: mDesc })) setMoving(null); }}
               className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-onbrand">حفظ</button>
             <button onClick={() => setMoving(null)} className="rounded-lg border border-line px-4 py-2 text-sm">إلغاء</button>
           </div>
@@ -150,6 +216,43 @@ export default function AdminPage() {
       <Link href="/" className="inline-block text-sm text-muted hover:text-ink">← الرئيسية</Link>
         <h1 className="text-2xl font-bold">لوحة المشرف</h1>
       {err && <p className="rounded-lg border border-now p-3 text-sm">{err}</p>}
+
+      <section className="space-y-3 rounded-xl border border-line bg-panel p-4" aria-labelledby="admin-notice-heading">
+        <h2 id="admin-notice-heading" className="flex items-center gap-2 text-lg font-bold"><Megaphone size={20} /> التبليغات</h2>
+        <p className="text-sm text-muted">التبليغ يظهر أعلى الجدول عند دخول الطلاب، ويختفي تلقائياً بعد 4 ساعات. يمكن مسحه في أي وقت.</p>
+        {activeNotice && (
+          <div className="rounded-lg border border-brand/40 bg-brand/5 p-3">
+            <p className="text-xs font-semibold text-brand">التبليغ الحالي</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm">{activeNotice.message}</p>
+            <p className="mt-1 text-xs text-muted">ينتهي: {new Date(activeNotice.expires_at).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</p>
+            <button type="button" disabled={noticeBusy} onClick={clearNotice}
+              className="mt-2 flex items-center gap-1 rounded-lg border border-now px-3 py-1.5 text-sm text-ink disabled:opacity-50">
+              <Trash2 size={15} /> مسح التبليغ الآن
+            </button>
+          </div>
+        )}
+        <form onSubmit={publishNotice} className="space-y-2">
+          <label htmlFor="notice-text" className="text-sm font-semibold">نص التبليغ الجديد</label>
+          <textarea id="notice-text" rows={3} maxLength={400} required value={noticeText}
+            onChange={(e) => setNoticeText(e.target.value)} placeholder="مثلاً: تم تغيير قاعة المحاضرة القادمة إلى BME 4"
+            className="w-full resize-y rounded-lg border border-line bg-bg p-3 text-sm" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-muted">{noticeText.length}/400 حرف</span>
+            <button type="submit" disabled={noticeBusy || !noticeText.trim()}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-onbrand disabled:opacity-50">
+              {noticeBusy ? 'جارٍ الحفظ...' : 'إرسال التبليغ'}
+            </button>
+          </div>
+        </form>
+        {noticeFeedback && <p role="status" className="text-sm text-brand">{noticeFeedback}</p>}
+      </section>
+
+      <details className="rounded-xl border border-line bg-panel p-4">
+        <summary className="flex cursor-pointer items-center gap-2 text-lg font-bold"><Upload size={19} /> رفع ملفات المشرف (بدون موافقة)</summary>
+        <div className="mt-4 border-t border-line pt-4">
+          <UploadForm adminPin={pin} embedded onPublished={() => { void load(); }} />
+        </div>
+      </details>
 
       {previewOnly && <section className="rounded-xl border border-line bg-panel p-4 space-y-2">
         <h2 className="font-bold">تجربة تجهيز الملازم القديمة</h2>

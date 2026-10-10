@@ -138,13 +138,15 @@ export default function NextClass({ initialNow, initialGroup }: { initialNow: st
           {DAYS_AR.map((name, d) => {
             const sessions = mine.filter((s) => s.day === d).sort((a, b) => mins(a.start) - mins(b.start));
             const isOpen = open.includes(d);
+            // Count lecture/lab sessions, not individual 60-minute slots.
+            const lectureCount = sessions.length;
             return (
               <li key={d}>
                 <button onClick={() => toggleDay(d)} aria-expanded={isOpen}
                   className="flex w-full items-center gap-2 py-2.5 text-start">
                   <span className={`font-semibold ${today === d ? 'text-brand' : ''}`}>{name}</span>
                   {today === d && <span className="rounded bg-brand/15 px-1.5 text-xs font-semibold text-brand">اليوم</span>}
-                  <span className="flex-1 text-xs text-muted">{sessions.length ? `${sessions.length} محاضرات` : 'لا محاضرات'}</span>
+                  <span className="flex-1 text-xs text-muted">{lectureCount ? `${lectureCount} محاضرات` : 'لا محاضرات'}</span>
                   <ChevronDown size={18} className={`text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {isOpen && (

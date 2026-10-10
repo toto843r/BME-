@@ -38,7 +38,9 @@ export const SCHEDULE: Session[] = [
   { group: 'B', day: 3, start: '08:30', end: '10:30', slug: 'biomedical-sensors', track: 'theory', room: 'BME 4' },
   { group: 'B', day: 3, start: '10:30', end: '13:30', slug: 'dynamics-of-human', track: 'main', room: 'BME 5' },
   { group: 'B', day: 4, start: '08:30', end: '10:30', slug: 'microcontroller', track: 'lab', room: 'مختبر الحاسوب' },
-  { group: 'B', day: 4, start: '10:30', end: '11:30', slug: 'medical-measurements', track: 'theory', room: 'م. الأجهزة الطبية' },
-  { group: 'B', day: 4, start: '11:30', end: '12:30', slug: 'medical-measurements', track: 'lab', room: 'م. الأجهزة الطبية' },
-  { group: 'B', day: 4, start: '13:30', end: '14:30', slug: 'medical-measurements', track: 'lab', room: 'م. الأجهزة الطبية' },
+  // Thursday B (fourth year) has exactly THREE sessions, per the college timetable:
+  // Microcontroller Lab 08:30–10:30; break 10:30–11:30;
+  // Medical Measurements theory 11:30–12:30; Medical Measurements Lab 12:30–14:30.
+  { group: 'B', day: 4, start: '11:30', end: '12:30', slug: 'medical-measurements', track: 'theory', room: 'م. الأجهزة الطبية' },
+  { group: 'B', day: 4, start: '12:30', end: '14:30', slug: 'medical-measurements', track: 'lab', room: 'م. الأجهزة الطبية' },
 ];

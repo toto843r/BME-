@@ -90,7 +90,7 @@ export default function SubjectView({ slug, track }: { slug: string; track: Trac
           {categoriesFor(track, slug).map((c) => (
             <button key={c.key} role="tab" aria-selected={tab === c.key} onClick={() => setTab(c.key)}
               className={`shrink-0 rounded-lg px-3.5 py-2 text-sm font-semibold ${tab === c.key ? 'bg-brand text-onbrand' : 'bg-panel text-muted border border-line'}`}>
-              {c.ar}{c.key !== 'exams_plus' && <span className="ms-1 opacity-70">{by(c.key).length}</span>}
+              {c.ar}<span className="ms-1 opacity-70">{by(c.key).length}</span>
             </button>
           ))}
         </div>

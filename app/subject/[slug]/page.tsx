@@ -1,3 +1,4 @@
+import BackButton from '@/components/BackButton';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { COURSES, getCourse, TRACK_LABEL } from '@/lib/courses';
@@ -22,7 +23,7 @@ export default async function SubjectPage({ params, searchParams }:
 
   return (
     <div>
-      <Link href="/" className="text-sm text-muted hover:text-ink">← الرئيسية</Link>
+      <BackButton fallback={track ? `/subject/${slug}` : '/'} />
       <h1 className="mt-2 text-2xl font-bold">{course.ar}</h1>
       <p className="mb-5 text-sm text-muted" dir="ltr" style={{ textAlign: 'start' }}>
         {course.en}{track && course.instructors[track] ? ` – ${course.instructors[track]}` : ''}

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createHash, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { generateQuiz } from '@/lib/quizGenerator';
 
@@ -20,17 +21,24 @@ export async function POST(req: Request) {
       if (new URL(origin).host !== new URL(req.url).host) return respond({ error: 'Forbidden' }, 403);
     } catch { return respond({ error: 'Forbidden' }, 403); }
   }
-  let body: { itemId?: string };
+  let body: { itemId?: string; adminPin?: string };
   try { body = await req.json(); } catch { return respond({ error: 'Invalid request' }, 400); }
   const itemId = String(body.itemId || '');
   if (!isUuid(itemId)) return respond({ error: 'Invalid item' }, 400);
   if (!process.env.GEMINI_API_KEY) return respond({ status: 'unconfigured' }, 503);
 
+  const pin = process.env.ADMIN_PIN || '';
+  const adminDigest = createHash('sha256').update(String(body.adminPin || '')).digest();
+  const expectedDigest = createHash('sha256').update(pin).digest();
+  const validAdmin = !!pin && timingSafeEqual(adminDigest, expectedDigest);
   const db = supabaseAdmin();
   const { data: item, error } = await db.from('items')
     .select('id,status,category,created_at,file_path,file_kind,attachments')
-    .eq('id', itemId).eq('status', 'pending').eq('category', 'lectures').maybeSingle();
-  if (error || !item || Date.now() - new Date(item.created_at).getTime() > 5 * 60_000) {
+    .eq('id', itemId).eq('category', 'lectures').maybeSingle();
+  // Keep public access restricted to newly uploaded pending lectures.
+  // Approved lectures may be prepared on upload only with a valid admin PIN.
+  if (error || !item || (item.status !== 'pending' && !(item.status === 'approved' && validAdmin)) ||
+      Date.now() - new Date(item.created_at).getTime() > 5 * 60_000) {
     return respond({ error: 'Upload not eligible' }, 404);
   }
   const pdfPaths = [

@@ -1,5 +1,5 @@
-import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 import Schedule from '@/components/Schedule';
 export default function SchedulePage() {
-  return <div><Link href="/" className="mb-5 inline-block text-sm text-muted">← الرئيسية</Link><Schedule /></div>;
+  return <div><BackButton fallback="/" /><Schedule /></div>;
 }

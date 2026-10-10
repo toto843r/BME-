@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import type { Item } from '@/lib/types';
 import { getCourse } from '@/lib/courses';
 import PreviewModal from './PreviewModal';
+import BackButton from './BackButton';
 
 export default function SharedFile({ id }: { id: string }) {
   const [item, setItem] = useState<Item | null>(null);
@@ -23,7 +24,7 @@ export default function SharedFile({ id }: { id: string }) {
     return (
       <div className="rounded-xl border border-line p-6 text-center">
         <p className="mb-3">هذا الملف غير موجود أو لم تتم الموافقة عليه بعد.</p>
-        <Link href="/" className="font-semibold text-brand underline">العودة للرئيسية</Link>
+        <BackButton fallback="/" />
       </div>
     );
   }

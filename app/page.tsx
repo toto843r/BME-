@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { COURSES } from '@/lib/courses';
 import NextClass from '@/components/NextClass';
 import OmniSearch from '@/components/OmniSearch';
+import NoticeBanner from '@/components/NoticeBanner';
 
 // The clock in the upcoming-lecture card must be fresh on every visit.
 // Render it on the server rather than waiting for client hydration.
@@ -15,6 +16,7 @@ export default async function Home() {
   const initialNow = new Date().toISOString();
   return (
     <div className="space-y-8">
+      <NoticeBanner />
       <NextClass initialNow={initialNow} initialGroup={initialGroup} />
       <Link href="/schedule" className="inline-flex rounded-lg border border-line bg-panel px-4 py-2 text-sm font-semibold text-brand hover:border-brand">الجدول الكامل والقاعات ←</Link>
       <OmniSearch />
