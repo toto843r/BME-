@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import PwaBits from '@/components/PwaBits';
 import OfflineIndicator from '@/components/OfflineIndicator';
 
-const font = IBM_Plex_Sans_Arabic({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700'], display: 'swap' });
+const font = IBM_Plex_Sans_Arabic({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700'], display: 'optional' });
 
 export const metadata: Metadata = {
   title: 'بوابة الهندسة الطبية – المرحلة الرابعة',
