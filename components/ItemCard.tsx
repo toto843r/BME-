@@ -4,15 +4,20 @@ import Link from 'next/link';
 import { itemFiles } from '@/lib/recent';
 import type { Item } from '@/lib/types';
 import { BADGES } from '@/lib/courses';
-import { supabase } from '@/lib/supabase';
 
 export default function ItemCard({ item, starred, onStar, onOpen, subtitle }:
   { item: Item; starred: boolean; onStar: () => void; onOpen: () => void; subtitle?: string }) {
   async function report() {
     const reason = window.prompt('ما المشكلة؟ (الملف لا يفتح / ناقص / خطأ في المحتوى)');
     if (reason === null) return;
-    const { error } = await supabase.from('reports').insert({ item_id: item.id, reason: reason.slice(0, 300) });
-    window.alert(error ? 'تعذر إرسال البلاغ، حاول لاحقاً.' : 'وصل البلاغ، شكراً.');
+    try {
+      // Reporting is rare; load the Supabase SDK only if it is used.
+      const { supabase } = await import('@/lib/supabase');
+      const { error } = await supabase.from('reports').insert({ item_id: item.id, reason: reason.slice(0, 300) });
+      window.alert(error ? 'تعذر إرسال البلاغ، حاول لاحقاً.' : 'وصل البلاغ، شكراً.');
+    } catch {
+      window.alert('تعذر إرسال البلاغ، حاول لاحقاً.');
+    }
   }
   async function share() {
     const url = `${window.location.origin}/f/${item.id}`;

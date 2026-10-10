@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Megaphone } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 
 interface Notice { id: string; message: string; expires_at: string }
 
@@ -11,17 +10,34 @@ export default function NoticeBanner() {
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const refresh = useCallback(async () => {
+    // Query the public RLS-protected view directly, without bundling the
+    // relatively large Supabase SDK on every home-page visit.
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!base || !key) return;
     try {
-      const { data, error } = await supabase.from('portal_notices')
-        .select('id, message, expires_at')
-        .is('deleted_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!error) setNotice(data as Notice | null);
+      const url = new URL(`${base.replace(/\/$/, '')}/rest/v1/portal_notices`);
+      url.searchParams.set('select', 'id,message,expires_at');
+      url.searchParams.set('deleted_at', 'is.null');
+      url.searchParams.set('expires_at', `gt.${new Date().toISOString()}`);
+      url.searchParams.set('order', 'created_at.desc');
+      url.searchParams.set('limit', '1');
+      const response = await fetch(url.toString(), {
+        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      if (!response.ok) return;
+      const data: unknown = await response.json();
+      if (!Array.isArray(data)) return;
+      const first = data[0];
+      if (first && typeof first.id === 'string' && typeof first.message === 'string' &&
+          typeof first.expires_at === 'string') {
+        setNotice({ id: first.id, message: first.message, expires_at: first.expires_at });
+      } else {
+        setNotice(null);
+      }
     } catch {
-      // If offline, keep showing the notice only until its original expiry.
+      // If offline, keep an existing notice only until its expiry.
     }
   }, []);
 
