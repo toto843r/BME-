@@ -5,12 +5,7 @@ import { Search } from 'lucide-react';
 import type { Item } from '@/lib/types';
 import { CATEGORY_AR, getCourse, TRACK_LABEL } from '@/lib/courses';
 import { useBookmarks } from '@/lib/useBookmarks';
-// Result cards are only needed after a search returns matches.
-// Loading them on demand keeps their UI/icons out of the initial home bundle.
-const ItemCard = dynamic(() => import('./ItemCard'), {
-  ssr: false,
-  loading: () => <div className="min-h-20 rounded-xl border border-line bg-panel p-3 text-sm text-muted">جارٍ تجهيز النتيجة…</div>,
-});
+import ItemCard from './ItemCard';
 
 // The PDF/document preview code loads only when the user opens a result.
 const PreviewModal = dynamic(() => import('./PreviewModal'), { ssr: false });
@@ -45,9 +40,6 @@ export default function OmniSearch() {
 
     // A short delay avoids a network request on every keystroke.
     const timer = window.setTimeout(async () => {
-      // Warm the result-card chunk only after real search intent. This runs
-      // alongside the request, so the first result appears without extra wait.
-      void import('./ItemCard').catch(() => {});
       const cached = recentQueries.current.get(query);
       if (cached && Date.now() - cached.at < 60_000) {
         setItems(cached.items);
