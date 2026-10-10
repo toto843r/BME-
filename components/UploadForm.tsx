@@ -40,7 +40,7 @@ export default function UploadForm({ adminPin, embedded = false, onPublished }: 
 
   useEffect(() => {
     if (!categoriesFor(effTrack, slug).some((c) => c.key === category)) setCategory('lectures');
-  }, [effTrack, category]);
+  }, [effTrack, category, slug]);
 
   function addFiles(list: FileList | null) {
     if (!list) return;

@@ -60,6 +60,7 @@ export default function PreviewModal({ item, onClose, initialIndex = 0 }: {
   const dl = file && downloadUrl(file.path, file.name && file.name.includes('.') ? file.name : `${item.title}-${index + 1}.${file.path.split('.').pop()}`);
   const isPdf = isPdfFile(file);
   const isImage = isImageFile(file);
+  const imageWithDescription = isImage && Boolean(item.description?.trim());
   return <div className="fixed inset-0 z-50 bg-black/65 md:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} role="dialog" aria-modal="true" aria-label={item.title}>
     <div className="mx-auto flex h-[100dvh] max-w-4xl flex-col overflow-hidden bg-panel md:h-full md:rounded-2xl">
       <div className="flex flex-wrap items-center gap-1 border-b border-line p-2.5 sm:gap-2 sm:p-3">
@@ -74,10 +75,12 @@ export default function PreviewModal({ item, onClose, initialIndex = 0 }: {
           {f.name || `ملف ${i + 1}`} · {i + 1}/{files.length}
         </button>)}
       </div>}
-      <div className={`min-h-0 flex-1 ${isPdf ? 'overflow-hidden' : 'overflow-auto overscroll-contain'}`}>
+      <div className={`min-h-0 flex-1 ${isPdf ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}>
         {embed && <div className="aspect-video w-full bg-black"><iframe src={embed} title={item.title} allowFullScreen className="h-full w-full" allow="accelerometer; encrypted-media; picture-in-picture" /></div>}
         {!embed && item.external_url && <div className="flex flex-col items-center gap-3 p-6"><p className="text-muted">هذا رابط خارجي لا يمكن تضمينه.</p><a href={item.external_url} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-brand px-4 py-2 text-onbrand">فتح الرابط</a></div>}
-        {isImage && file && <ResponsiveImageViewer key={url} url={url} title={file.name || item.title} />}
+        {isImage && file && <div className="w-full" style={imageWithDescription ? { height: 'min(52dvh, 470px)', minHeight: 240 } : { height: '100%' }}>
+          <ResponsiveImageViewer key={url} url={url} title={file.name || item.title} />
+        </div>}
         {isPdf && file && <ResponsivePdfViewer key={url} url={url} title={file.name || item.title} />}
         {!isPdf && !isImage && file?.kind === 'doc' && <iframe key={url} src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`} title={item.title} loading="lazy" className="block h-[72dvh] w-full" />}
         {item.description && <div className="space-y-2 border-t border-line p-4 text-base leading-relaxed">{item.description.split('\n').map((line, i) => line.trim() ? <p key={i} dir="auto" className="text-start">{line}</p> : <div key={i} className="h-2" />)}</div>}

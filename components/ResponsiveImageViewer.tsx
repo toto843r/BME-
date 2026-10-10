@@ -174,7 +174,7 @@ export default function ResponsiveImageViewer({ url, title }: { url: string; tit
         title="ملاءمة للشاشة" className="rounded-lg border border-line p-2 disabled:opacity-35"><RotateCcw size={16} /></button>
     </div>
     <div ref={stageRef} className="relative flex min-h-0 flex-1 cursor-grab items-center justify-center overflow-hidden bg-bg/40 active:cursor-grabbing"
-      style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+      style={{ touchAction: scaleLabel > 1 ? 'none' : 'pan-y', overscrollBehavior: 'contain' }}
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}
       onDoubleClick={(event) => {
         // Some mobile browsers fire dblclick after touch double-tap; don't toggle twice.

@@ -28,6 +28,7 @@ export const TRACK_LABEL: Record<Track, string> = { theory: 'نظري', lab: 'م
 
 export const CATEGORIES: { key: Category; ar: string; en: string }[] = [
   { key: 'lectures', ar: 'الملازم', en: 'Lectures & Slides' },
+  { key: 'sources', ar: 'المصادر', en: 'References & Sources' },
   { key: 'reports', ar: 'التقارير', en: 'Lab Reports' },
   { key: 'quizzes', ar: 'الكوزات', en: 'Quizzes' },
   { key: 'midterms', ar: 'المدات', en: 'Midterm Exams' },
@@ -38,7 +39,14 @@ export const CATEGORIES: { key: Category; ar: string; en: string }[] = [
 // Lab track: Reports instead of Videos. Theory / main tracks: Videos, no Reports.
 export type DisplayCategory = Category | 'exams_plus';
 export const categoriesFor = (track: Track, slug?: string): { key: DisplayCategory; ar: string; en: string }[] => {
-  const list = CATEGORIES.filter((c) => (track === 'lab' ? c.key !== 'videos' : c.key !== 'reports'));
+  // References belong to Dynamics only. Keep its existing quizzes, midterms
+  // and tutorials, but hide finals/summaries without deleting stored items.
+  const list = CATEGORIES.filter((c) => {
+    if (slug === 'dynamics-of-human') {
+      return c.key !== 'reports' && c.key !== 'finals' && c.key !== 'summaries';
+    }
+    return c.key !== 'sources' && (track === 'lab' ? c.key !== 'videos' : c.key !== 'reports');
+  });
   if (slug !== 'biomedical-sensors') return list;
   const display: { key: DisplayCategory; ar: string; en: string }[] = [];
   for (const c of list) {

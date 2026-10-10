@@ -1,5 +1,5 @@
 export type Track = 'theory' | 'lab' | 'main';
-export type Category = 'lectures' | 'reports' | 'quizzes' | 'midterms' | 'finals' | 'summaries' | 'videos';
+export type Category = 'lectures' | 'sources' | 'reports' | 'quizzes' | 'midterms' | 'finals' | 'summaries' | 'videos';
 export type FileKind = 'pdf' | 'image' | 'doc' | 'video' | 'link' | 'text';
 
 export interface Item {

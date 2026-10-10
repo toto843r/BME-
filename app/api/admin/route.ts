@@ -91,13 +91,16 @@ export async function POST(req: Request) {
       const course = COURSES.find((c) => c.slug === body.slug);
       const track = course?.split ? body.track : 'main';
       const category = body.category === 'exams_plus' && body.slug === 'biomedical-sensors' ? 'quizzes' : body.category;
-      const available = ['lectures', 'reports', 'quizzes', 'midterms', 'finals', 'summaries', 'videos'];
+      const available = ['lectures', 'sources', 'reports', 'quizzes', 'midterms', 'finals', 'summaries', 'videos'];
       const title = String(body.title ?? '').trim();
       const fileEntries = Array.isArray(body.files) ? body.files : [];
       const video = category === 'videos';
       const description = String(body.description ?? '').trim().slice(0, 5000);
       if (!course || !['main', 'theory', 'lab'].includes(track) || (course.split && track === 'main') ||
-          !available.includes(category) || (track === 'lab' && video) || (track !== 'lab' && category === 'reports') ||
+          !available.includes(category) ||
+          (category === 'sources' && (course.slug !== 'dynamics-of-human' || track !== 'main')) ||
+          (course.slug === 'dynamics-of-human' && ['finals', 'summaries'].includes(category)) ||
+          (track === 'lab' && video) || (track !== 'lab' && category === 'reports') ||
           title.length < 2 || title.length > 200 || fileEntries.length > 10 ||
           (video && (fileEntries.length || !/^https:\/\//i.test(String(body.url || '')))) ||
           (!video && !fileEntries.length && !(description && ['quizzes', 'midterms', 'finals'].includes(category)))) {
@@ -233,13 +236,17 @@ export async function POST(req: Request) {
     }
     case 'move_item': { // move a published item to another course / track / category
       const c = COURSES.find((x) => x.slug === body.slug);
-      const cats = ['lectures', 'reports', 'quizzes', 'midterms', 'finals', 'summaries', 'videos'];
+      const cats = ['lectures', 'sources', 'reports', 'quizzes', 'midterms', 'finals', 'summaries', 'videos'];
       const category = body.slug === 'biomedical-sensors' && body.category === 'exams_plus' ? 'quizzes' : body.category;
       const track = c?.split ? body.track : 'main';
       if (!c || !['theory', 'lab', 'main'].includes(track) || (c.split && track === 'main') || !cats.includes(category)) {
         return NextResponse.json({ error: 'وجهة النقل غير صالحة' }, { status: 400 });
       }
-      if ((track === 'lab' && category === 'videos') || (track !== 'lab' && body.category === 'reports')) {
+      if ((category === 'sources' && (c.slug !== 'dynamics-of-human' || track !== 'main')) ||
+          (c.slug === 'dynamics-of-human' && ['finals', 'summaries'].includes(category))) {
+        return NextResponse.json({ error: 'هذا القسم غير متاح في هذه المادة.' }, { status: 400 });
+      }
+      if ((track === 'lab' && category === 'videos') || (track !== 'lab' && category === 'reports')) {
         return NextResponse.json({ error: 'هذا القسم غير متاح لهذا المسار (التقارير للمختبر فقط، والشروحات للنظري فقط).' }, { status: 400 });
       }
       const { data: it } = await db.from('items').select('file_path, file_kind').eq('id', id).single();

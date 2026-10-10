@@ -8,8 +8,9 @@ create table if not exists public.items (
   id            uuid primary key default gen_random_uuid(),
   subject_slug  text not null,
   track         text not null default 'main' check (track in ('theory','lab','main')),
-  category      text not null check (category in ('lectures','reports','quizzes','midterms','finals','summaries','videos')),
+  category      text not null check (category in ('lectures','sources','reports','quizzes','midterms','finals','summaries','videos')),
   title         text not null check (char_length(title) between 2 and 200),
+  constraint items_sources_dynamics_only CHECK (category <> 'sources' OR (subject_slug = 'dynamics-of-human' AND track = 'main')),
   description   text check (description is null or char_length(description) <= 5000),
   tags          text[] not null default '{}',
   badges        text[] not null default '{}',          -- high_yield | past_final | simplified
