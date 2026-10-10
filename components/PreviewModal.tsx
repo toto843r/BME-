@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { BookOpen, BrainCircuit, ChevronLeft, ChevronRight, Download, Minus, Plus, RotateCcw, X } from 'lucide-react';
+import { BrainCircuit, ChevronLeft, ChevronRight, Download, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import type { Item } from '@/lib/types';
 import { downloadUrl, fileUrl } from '@/lib/supabase';
 import { youtubeEmbed } from '@/lib/media';
@@ -12,27 +12,6 @@ const ResponsivePdfViewer = dynamic(() => import('./ResponsivePdfViewer'), {
   ssr: false,
   loading: () => <p className="p-6 text-center text-sm text-muted">جارٍ تحميل عارض الملزمات…</p>,
 });
-
-/**
- * Open the device's native share/app chooser where the browser supports it.
- * Share the URL, not a downloaded Blob: PDF bytes are never fetched a second
- * time or buffered in memory just for this action.
- * If native sharing is unavailable, the anchor opens the PDF normally.
- */
-function openPdfWithDeviceApp(event: MouseEvent<HTMLAnchorElement>, url: string, title: string) {
-  if (typeof navigator.share !== 'function') return;
-  const shareData = { title, url };
-  if (typeof navigator.canShare === 'function' && !navigator.canShare(shareData)) return;
-
-  // Keep the share() call synchronous with the tap (required on iOS/Android).
-  event.preventDefault();
-  void navigator.share(shareData).catch((error: unknown) => {
-    // Closing the system share sheet should not open or download anything.
-    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') return;
-    // Browser refused the share: show its native PDF preview instead.
-    window.location.assign(url);
-  });
-}
 
 export default function PreviewModal({ item, onClose, initialIndex = 0 }: {
   item: Item | null; onClose: () => void; initialIndex?: number;
@@ -65,12 +44,6 @@ export default function PreviewModal({ item, onClose, initialIndex = 0 }: {
       <div className="flex flex-wrap items-center gap-1 border-b border-line p-2.5 sm:gap-2 sm:p-3">
         <h2 className="min-w-0 flex-1 truncate font-semibold">{item.title}</h2>
         {file?.kind === 'pdf' && item.category === 'lectures' && <Link href={`/quiz/${item.id}?file=${encodeURIComponent(file.path)}`} className="flex items-center gap-1 rounded-lg bg-brand/10 px-2 py-2 text-xs font-semibold text-brand"><BrainCircuit size={15} /> اختبر نفسك</Link>}
-        {file?.kind === 'pdf' && url && <a
-          href={url} target="_blank" rel="noopener noreferrer"
-          onClick={(event) => openPdfWithDeviceApp(event, url, file.name || item.title)}
-          title="اختر تطبيقاً من قائمة الجهاز، أو افتح PDF بالمتصفح إذا لم تتوفر المشاركة"
-          className="flex items-center gap-1 rounded-lg border border-brand/40 bg-brand/10 px-2 py-2 text-xs font-semibold text-brand hover:bg-brand/20"
-        ><BookOpen size={15} /> فتح بتطبيق PDF</a>}
         {dl && <a href={dl} className="flex items-center gap-1 rounded-lg bg-brand px-2 py-2 text-xs font-semibold text-onbrand"><Download size={15} /> تحميل</a>}
         <button onClick={onClose} aria-label="إغلاق" className="rounded-lg p-2 hover:bg-line/60"><X size={18} /></button>
       </div>
