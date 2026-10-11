@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { validBank } from '@/lib/quiz';
+import { MAX_FILE_BYTES } from '@/lib/uploadLimits';
 import type { QuizBank } from '@/lib/quiz';
 
 const isUuid = (x: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
@@ -57,7 +58,7 @@ export async function generateQuiz(itemId: string, filePath: string): Promise<Ou
   try {
     const { data: download, error: downloadError } = await db.storage.from('materials').download(filePath);
     if (downloadError || !download) return fail('Could not read stored PDF');
-    if (download.size > 30 * 1024 * 1024) return fail('PDF over 30 MiB safety limit');
+    if (download.size > MAX_FILE_BYTES) return fail('PDF over 50 MiB safety limit');
     const pdf = Buffer.from(await download.arrayBuffer());
     if (pdf.subarray(0, 5).toString() !== '%PDF-') return fail('Not PDF data');
     const contentHash = createHash('sha256').update(pdf).digest('hex');

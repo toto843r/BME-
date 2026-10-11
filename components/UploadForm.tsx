@@ -5,9 +5,9 @@ import { X } from 'lucide-react';
 import { BUCKET, supabase } from '@/lib/supabase';
 import { CATEGORIES, categoriesFor, COURSES, getCourse, normalizeCategory, type DisplayCategory } from '@/lib/courses';
 import { EXT_MIME, kindFromExt } from '@/lib/media';
+import { MAX_FILE_BYTES, MAX_FILE_MB } from '@/lib/uploadLimits';
 import type { Category, Track } from '@/lib/types';
 
-const MAX = 30 * 1024 * 1024;
 const MAX_FILES = 10;
 const field = 'w-full rounded-lg border border-line bg-panel px-3 py-2.5 outline-none focus:border-brand';
 
@@ -55,7 +55,7 @@ export default function UploadForm({ adminPin, embedded = false, onPublished }: 
     if (isVideo && !/^https?:\/\//i.test(url)) return setMsg({ ok: false, text: 'ضع رابطاً صحيحاً يبدأ بـ https://' });
     if (!isVideo && files.length === 0 && !(hasDesc && desc.trim()))
       return setMsg({ ok: false, text: hasDesc ? 'اختر ملفاً أو اكتب نص الأسئلة.' : 'اختر ملفاً.' });
-    if (files.some((f) => f.size > MAX)) return setMsg({ ok: false, text: 'أحد الملفات أكبر من 30 ميغابايت.' });
+    if (files.some((f) => f.size <= 0 || f.size > MAX_FILE_BYTES)) return setMsg({ ok: false, text: `يجب أن يكون حجم كل ملف أكبر من صفر ولا يتجاوز ${MAX_FILE_MB} ميغابايت.` });
 
     setBusy(true);
     try {
@@ -137,7 +137,7 @@ export default function UploadForm({ adminPin, embedded = false, onPublished }: 
     <form onSubmit={submit} className="mx-auto max-w-xl space-y-4">
       {!embedded && <BackButton fallback="/" />}
       <h1 className="text-2xl font-bold">{adminPin ? 'رفع ملف من المشرف' : 'رفع ملف'}</h1>
-      <p className="text-sm text-muted">{adminPin ? 'ملفات المشرف تُنشر مباشرة بدون انتظار الموافقة.' : 'كل رفعة تمر على مراجعة المشرف قبل ظهورها.'} الصيغ: PDF، صور، Word، PowerPoint (حتى 30 ميغابايت للملف).</p>
+      <p className="text-sm text-muted">{adminPin ? 'ملفات المشرف تُنشر مباشرة بدون انتظار الموافقة.' : 'كل رفعة تمر على مراجعة المشرف قبل ظهورها.'} الصيغ: PDF، صور، Word، PowerPoint (حتى {MAX_FILE_MB} ميغابايت للملف).</p>
 
       <label className="block"><span className="mb-1 block text-sm">المادة</span>
         <select className={field} value={slug} onChange={(e) => setSlug(e.target.value)}>

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { COURSES } from '@/lib/courses';
 import { generateQuiz } from '@/lib/quizGenerator';
 import { EXT_MIME, kindFromExt } from '@/lib/media';
+import { MAX_FILE_BYTES } from '@/lib/uploadLimits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       // Explicitly authenticated with ADMIN_PIN above; never expose service role to the browser.
       const ext = String(body.filename || '').split('.').pop()?.toLowerCase() || '';
       const size = Number(body.size);
-      if (!Object.hasOwn(EXT_MIME, ext) || !Number.isFinite(size) || size <= 0 || size > 30 * 1024 * 1024) {
+      if (!Object.hasOwn(EXT_MIME, ext) || !Number.isFinite(size) || size <= 0 || size > MAX_FILE_BYTES) {
         return NextResponse.json({ error: 'صيغة أو حجم الملف غير مسموح' }, { status: 400 });
       }
       const path = `uploads/${crypto.randomUUID()}.${ext}`;

@@ -63,9 +63,9 @@ drop policy if exists "reports owner all" on public.reports;
 create policy "reports owner all" on public.reports
   for all to authenticated using (true) with check (true);
 
--- STORAGE: public bucket, 30 MB per file, restricted mime types.
+-- STORAGE: public bucket, 50 MiB per file, restricted mime types.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('materials', 'materials', true, 31457280, array[
+values ('materials', 'materials', true, 52428800, array[
   'application/pdf','image/png','image/jpeg','image/webp',
   'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation'])
