@@ -7,11 +7,33 @@ export default function PwaBits() {
   const [ios, setIos] = useState(false);
   const [hidden, setHidden] = useState(true);
 
+  // Defer first-time service-worker installation until after the critical
+  // render. Installing the worker starts offline-shell precaching, which can
+  // otherwise compete with the page's fonts and HTML on a slow mobile network.
+  // An already-active service worker continues serving cached pages normally.
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      if (process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => {});
-      else { navigator.serviceWorker.getRegistrations().then((list) => list.forEach((sw) => sw.unregister())).catch(() => {}); }
+    if (!('serviceWorker' in navigator)) return;
+    if (process.env.NODE_ENV !== 'production') {
+      void navigator.serviceWorker.getRegistrations()
+        .then((list) => list.forEach((sw) => { void sw.unregister(); }))
+        .catch(() => {});
+      return;
     }
+    let timer: number | undefined;
+    const afterLoad = () => {
+      timer = window.setTimeout(() => {
+        void navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }, 1800);
+    };
+    if (document.readyState === 'complete') afterLoad();
+    else window.addEventListener('load', afterLoad, { once: true });
+    return () => {
+      window.removeEventListener('load', afterLoad);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
     let dismissed = false;
     try { dismissed = !!localStorage.getItem('bme-install-dismissed'); } catch {}
